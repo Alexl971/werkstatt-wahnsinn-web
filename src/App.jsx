@@ -28,9 +28,10 @@ export default function App() {
   const [currentGame, setCurrentGame] = useState(null);
 
   const enabledGames = useMemo(
-    () => Object.entries(settings.enabledGames)
-      .filter(([, v]) => v)
-      .map(([k]) => k),
+    () =>
+      Object.entries(settings.enabledGames)
+        .filter(([, v]) => v)
+        .map(([k]) => k),
     [settings.enabledGames]
   );
 
@@ -62,18 +63,13 @@ export default function App() {
     <div style={styles.app}>
       {screen === "MENU" && (
         <div className="card" style={styles.card}>
-          <Menu onStart={startRound} onSettings={() => setScreen("SETTINGS")} />
-          <div style={{ marginTop: 16, width: "100%", maxWidth: 460 }}>
-            <input
-              placeholder="Spielername"
-              value={playerName}
-              onChange={(e) => setPlayerName(e.target.value)}
-              style={styles.input}
-            />
-            <div style={{ color: "#9ca3af", marginTop: 8 }}>
-              Highscore: {highscore}
-            </div>
-          </div>
+          <Menu
+            onStart={startRound}
+            onSettings={() => setScreen("SETTINGS")}
+            playerName={playerName}
+            setPlayerName={setPlayerName}
+            highscore={highscore}
+          />
         </div>
       )}
 
@@ -102,7 +98,11 @@ export default function App() {
             <button className="btn" style={styles.btnPrimary} onClick={startRound}>
               Nächste Runde
             </button>
-            <button className="btn" style={styles.btnSecondary} onClick={() => setScreen("MENU")}>
+            <button
+              className="btn"
+              style={styles.btnSecondary}
+              onClick={() => setScreen("MENU")}
+            >
               Menü
             </button>
           </div>
@@ -125,11 +125,11 @@ const styles = {
   },
   card: {
     width: "100%",
-    maxWidth: 560,
+    maxWidth: 720, // etwas breiter für die schöne Startseite
     background: "#111827",
     border: "2px solid #1f2937",
     borderRadius: 18,
-    padding: 16,
+    padding: 0, // Menu.jsx hat schon eigenes Padding
   },
   centerCard: {
     width: "100%",
@@ -144,15 +144,6 @@ const styles = {
     alignItems: "center",
     textAlign: "center",
   },
-input: {
-  width: "100%",
-  background: "#0b1220",
-  border: "2px solid #1f2937",
-  color: "#e5e7eb",
-  padding: "10px 12px",
-  borderRadius: 10,
-  outline: "none",
-},
   btnPrimary: {
     background: "#2563eb",
     borderRadius: 12,
