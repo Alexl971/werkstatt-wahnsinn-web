@@ -8,14 +8,14 @@ import CodeTyper from "../games/CodeTyper";
 
 /**
  * props:
- * - game: string ('TAP_FRENZY' ...)
+ * - game: string ('TAP_FRENZY' | 'QUIZ' | 'SWIPE_APPROVAL' | 'SORT_SEQUENCE' | 'BRAKE_TEST' | 'CODE_TYPER')
  * - roundSeconds: number
  * - onRoundEnd(earned: number): void
  */
 export default function GameRouter({ game, roundSeconds, onRoundEnd }) {
   const [earned, setEarned] = useState(0);
   const [timeLeft, setTimeLeft] = useState(roundSeconds);
-  const timerRef = useRef();
+  const timerRef = useRef(null);
 
   useEffect(() => {
     setEarned(0);
@@ -53,7 +53,6 @@ export default function GameRouter({ game, roundSeconds, onRoundEnd }) {
         {game === "SORT_SEQUENCE" && <SortSequence onScore={add} />}
         {game === "BRAKE_TEST" && <BrakeTest onScore={add} />}
         {game === "CODE_TYPER" && <CodeTyper onScore={add} />}
-        {/* weitere Spiele kommen hier gleich */}
       </div>
     </div>
   );
@@ -72,9 +71,9 @@ const styles = {
   header: {
     display: "flex",
     alignItems: "center",
-    gap: 12,                // <— Abstand zwischen Timer / Punkte
+    gap: 12,                // Abstand zwischen Timer / Punkte
     justifyContent: "space-between",
-    flexWrap: "wrap",       // <— bricht um, wenn’s eng wird
+    flexWrap: "wrap",       // bricht um, wenn’s eng wird
   },
   badge: {
     display: "inline-block",
@@ -97,8 +96,8 @@ const styles = {
     alignItems: "center",
     justifyContent: "center",
     flexDirection: "column",
-    paddingTop: 16,         // <— Abstand unter der Kopfzeile
-    minHeight: 260,         // <— genug Platz fürs Spiel
+    paddingTop: 40,         // mehr Abstand zur Kopfzeile
+    minHeight: 260,
     textAlign: "center",
   },
 };

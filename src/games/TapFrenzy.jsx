@@ -42,7 +42,7 @@ const styles = {
     cursor: "pointer",
     fontWeight: 900,
     fontSize: 24,
-    marginTop: 6,
+    marginTop: 24,             // vorher 6 → deutlich weiter unten
     boxShadow: "0 6px 20px rgba(0,0,0,.25)",
   },
 };
