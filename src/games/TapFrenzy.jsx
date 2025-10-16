@@ -6,9 +6,10 @@ export default function TapFrenzy({ onScore }) {
   return (
     <div style={styles.center}>
       <div style={styles.title}>Ölwechsel 3000</div>
-      <div>Tippe so schnell wie möglich!</div>
+      <div style={{ opacity: 0.9 }}>Tippe so schnell wie möglich!</div>
+
       <button
-        style={styles.btn}
+        style={styles.bigBtn}
         onClick={() => {
           setTaps((n) => n + 1);
           onScore(1);
@@ -16,7 +17,8 @@ export default function TapFrenzy({ onScore }) {
       >
         TAP
       </button>
-      <div>Taps: {taps}</div>
+
+      <div style={{ marginTop: 8 }}>Taps: {taps}</div>
     </div>
   );
 }
@@ -26,19 +28,21 @@ const styles = {
     display: "flex",
     flexDirection: "column",
     alignItems: "center",
-    gap: 10,
+    gap: 12,
     textAlign: "center",
     padding: 10,
   },
-  title: { fontSize: 24, fontWeight: 800 },
-  btn: {
+  title: { fontSize: 26, fontWeight: 800 },
+  bigBtn: {
     background: "#2563eb",
     color: "white",
     border: "none",
-    borderRadius: 12,
-    padding: "12px 18px",
+    borderRadius: 16,
+    padding: "18px 36px",
     cursor: "pointer",
-    fontWeight: 700,
-    marginTop: 8,
+    fontWeight: 900,
+    fontSize: 24,
+    marginTop: 6,
+    boxShadow: "0 6px 20px rgba(0,0,0,.25)",
   },
 };

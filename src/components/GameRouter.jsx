@@ -3,7 +3,7 @@ import TapFrenzy from "../games/TapFrenzy";
 
 /**
  * props:
- * - game: string ('TAP_FRENZY' ...), aktuell 1. Spiel, weitere folgen
+ * - game: string ('TAP_FRENZY' ...)
  * - roundSeconds: number
  * - onRoundEnd(earned: number): void
  */
@@ -13,7 +13,6 @@ export default function GameRouter({ game, roundSeconds, onRoundEnd }) {
   const timerRef = useRef();
 
   useEffect(() => {
-    // neue Runde → reset
     setEarned(0);
     setTimeLeft(roundSeconds);
   }, [game, roundSeconds]);
@@ -27,45 +26,52 @@ export default function GameRouter({ game, roundSeconds, onRoundEnd }) {
   }, [game, roundSeconds]);
 
   useEffect(() => {
-    if (timeLeft === 0) {
-      onRoundEnd(earned);
-    }
+    if (timeLeft === 0) onRoundEnd(earned);
   }, [timeLeft, earned, onRoundEnd]);
 
   const add = (n) => setEarned((e) => e + n);
 
   return (
-    <div style={styles.wrap}>
+    <div style={styles.shell}>
       <div style={styles.header}>
-        <div>⏱️ {timeLeft}s</div>
-        <div>Punkte: {earned}</div>
+        <span style={styles.badge}>⏱️ {timeLeft}s</span>
+        <span style={styles.badge}>Punkte: {earned}</span>
         <button style={styles.btnSecondary} onClick={() => onRoundEnd(earned)}>
           Runde beenden
         </button>
       </div>
 
-      {game === "TAP_FRENZY" && <TapFrenzy onScore={add} />}
-
-      {/* Hier fügen wir gleich die weiteren Spiele ein:
-          QUIZ, SWIPE_APPROVAL, SORT_SEQUENCE, BRAKE_TEST, CODE_TYPER */}
+      <div style={styles.cardBody}>
+        {game === "TAP_FRENZY" && <TapFrenzy onScore={add} />}
+        {/* weitere Spiele kommen hier gleich */}
+      </div>
     </div>
   );
 }
 
 const styles = {
-  wrap: {
+  shell: {
     width: "100%",
     maxWidth: 560,
     background: "#111827",
     border: "2px solid #1f2937",
     borderRadius: 18,
     padding: 16,
+    margin: "0 auto",
   },
   header: {
     display: "flex",
     alignItems: "center",
+    gap: 12,                // <— Abstand zwischen Timer / Punkte
     justifyContent: "space-between",
-    marginBottom: 8,
+    flexWrap: "wrap",       // <— bricht um, wenn’s eng wird
+  },
+  badge: {
+    display: "inline-block",
+    padding: "8px 12px",
+    borderRadius: 12,
+    background: "#0b1220",
+    border: "2px solid #1f2937",
   },
   btnSecondary: {
     background: "#334155",
@@ -75,5 +81,14 @@ const styles = {
     padding: "10px 14px",
     cursor: "pointer",
     fontWeight: 700,
+  },
+  cardBody: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    flexDirection: "column",
+    paddingTop: 16,         // <— Abstand unter der Kopfzeile
+    minHeight: 260,         // <— genug Platz fürs Spiel
+    textAlign: "center",
   },
 };
