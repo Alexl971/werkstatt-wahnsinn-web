@@ -1,6 +1,6 @@
 import React from "react";
 
-export default function Menu({ onStart, onSettings, playerName, setPlayerName, highscore }) {
+export default function Menu({ onStart, onSettings, onHighscores, playerName, setPlayerName, highscore }) {
   return (
     <div style={styles.page}>
       <div style={styles.heroCard}>
@@ -25,11 +25,12 @@ export default function Menu({ onStart, onSettings, playerName, setPlayerName, h
           <div style={styles.buttonRow}>
             <button style={styles.primary} onClick={onStart}>🎮 Runde starten</button>
             <button style={styles.secondary} onClick={onSettings}>⚙️ Einstellungen</button>
+            <button style={styles.tertiary} onClick={onHighscores}>🏆 Highscores</button>
           </div>
 
           {/* Info-Leiste */}
           <div style={styles.infoBar}>
-            <div><span style={styles.infoLabel}>Highscore:</span> {highscore}</div>
+            <div><span style={styles.infoLabel}>Highscore lokal:</span> {highscore}</div>
             <div style={{ opacity: .75 }}>Dark-Mode aktiv</div>
           </div>
         </div>
@@ -107,6 +108,15 @@ const styles = {
     background: "#334155",
     color: "#e5e7eb",
     border: "none",
+    borderRadius: 12,
+    padding: "12px 18px",
+    cursor: "pointer",
+    fontWeight: 800,
+  },
+  tertiary: {
+    background: "#0b1220",
+    color: "#e5e7eb",
+    border: "2px solid #1f2937",
     borderRadius: 12,
     padding: "12px 18px",
     cursor: "pointer",
