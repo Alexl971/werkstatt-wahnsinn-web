@@ -1,10 +1,28 @@
 import React, { useState } from "react";
 import Menu from "./components/Menu";
+import Settings from "./components/Settings";
+import useLocalStorage from "./hooks/useLocalStorage";
+
+const DEFAULT_SETTINGS = {
+  enabledGames: {
+    TAP_FRENZY: true,
+    QUIZ: true,
+    SWIPE_APPROVAL: true,
+    SORT_SEQUENCE: true,
+    BRAKE_TEST: true,
+    CODE_TYPER: true,
+  },
+  roundSeconds: 20,
+  soundEnabled: true,
+};
 
 export default function App() {
   // Screens: MENU | SETTINGS | GAME | RESULT
   const [screen, setScreen] = useState("MENU");
-  const [playerName, setPlayerName] = useState("");
+  const [playerName, setPlayerName] = useLocalStorage("PLAYER_NAME", "");
+  const [highscore, setHighscore] = useLocalStorage("HIGH_SCORE", 0);
+  const [settings, setSettings] = useLocalStorage("SETTINGS", DEFAULT_SETTINGS);
+
   const [score, setScore] = useState(0);
   const [roundScore, setRoundScore] = useState(0);
 
@@ -14,13 +32,15 @@ export default function App() {
       return;
     }
     setRoundScore(0);
-    setScreen("GAME");
+    setScreen("GAME"); // (nächster Schritt: GameRouter einbauen)
   };
 
   const endRound = () => {
     const earned = Math.floor(Math.random() * 20) + 1; // Platzhalter
     setRoundScore(earned);
-    setScore((s) => s + earned);
+    const total = score + earned;
+    setScore(total);
+    if (total > highscore) setHighscore(total);
     setScreen("RESULT");
   };
 
@@ -28,10 +48,7 @@ export default function App() {
     <div style={styles.app}>
       {screen === "MENU" && (
         <div className="card" style={styles.card}>
-          <Menu
-            onStart={startRound}
-            onSettings={() => setScreen("SETTINGS")}
-          />
+          <Menu onStart={startRound} onSettings={() => setScreen("SETTINGS")} />
           <div style={{ marginTop: 16, width: "100%", maxWidth: 460 }}>
             <input
               placeholder="Spielername"
@@ -40,29 +57,25 @@ export default function App() {
               style={styles.input}
             />
             <div style={{ color: "#9ca3af", marginTop: 8 }}>
-              Highscore (kommt gleich): {score}
+              Highscore: {highscore}
             </div>
           </div>
         </div>
       )}
 
       {screen === "SETTINGS" && (
-        <div className="card" style={styles.centerCard}>
-          <h2 style={{ margin: 0 }}>Einstellungen</h2>
-          <p style={{ color: "#cbd5e1" }}>
-            Hier kommen gleich Untermenüs (Spiele auswählen, Rundenlänge, Sound).
-          </p>
-          <button className="btn" style={styles.btnPrimary} onClick={() => setScreen("MENU")}>
-            Zur Startseite
-          </button>
-        </div>
+        <Settings
+          settings={settings}
+          setSettings={setSettings}
+          onBack={() => setScreen("MENU")}
+        />
       )}
 
       {screen === "GAME" && (
         <div className="card" style={styles.centerCard}>
           <h2 style={{ margin: 0 }}>Runde läuft …</h2>
           <p style={{ color: "#cbd5e1" }}>
-            Gleich bauen wir hier den Game-Router mit Timer & Skip-Button ein.
+            (Im nächsten Schritt kommt hier der Game-Router mit Timer & Skip)
           </p>
           <div style={{ display: "flex", gap: 8 }}>
             <button className="btn" style={styles.btnSecondary} onClick={() => setScreen("MENU")}>
