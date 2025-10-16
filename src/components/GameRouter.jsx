@@ -1,5 +1,10 @@
 import React, { useEffect, useRef, useState } from "react";
 import TapFrenzy from "../games/TapFrenzy";
+import QuizRound from "../games/QuizRound";
+import SwipeApproval from "../games/SwipeApproval";
+import SortSequence from "../games/SortSequence";
+import BrakeTest from "../games/BrakeTest";
+import CodeTyper from "../games/CodeTyper";
 
 /**
  * props:
@@ -43,6 +48,11 @@ export default function GameRouter({ game, roundSeconds, onRoundEnd }) {
 
       <div style={styles.cardBody}>
         {game === "TAP_FRENZY" && <TapFrenzy onScore={add} />}
+        {game === "QUIZ" && <QuizRound onScore={add} />}
+        {game === "SWIPE_APPROVAL" && <SwipeApproval onScore={add} />}
+        {game === "SORT_SEQUENCE" && <SortSequence onScore={add} />}
+        {game === "BRAKE_TEST" && <BrakeTest onScore={add} />}
+        {game === "CODE_TYPER" && <CodeTyper onScore={add} />}
         {/* weitere Spiele kommen hier gleich */}
       </div>
     </div>
