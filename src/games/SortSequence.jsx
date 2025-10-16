@@ -1,113 +1,84 @@
-import React, { useMemo, useRef, useState } from "react";
+import React, { useMemo, useState } from "react";
 
 export default function SortSequence({ onScore }) {
-  // zufällige Startreihenfolge
-  const initial = useMemo(
-    () => [12, 27, 5, 33, 19].sort(() => Math.random() - 0.5),
-    []
-  );
-  const [items, setItems] = useState(initial);
+  const makeRound = () => [12, 27, 5, 33, 19].sort(() => Math.random() - 0.5);
+  const [items, setItems] = useState(makeRound);
+  const [picked, setPicked] = useState([]);           // values in click order
+  const [msg, setMsg] = useState("");
+  const [locked, setLocked] = useState(false);
 
-  // Drag-States
-  const [dragIndex, setDragIndex] = useState(null);
-  const [dragOffset, setDragOffset] = useState(0); // px
-  const itemRefs = useRef([]);
+  const sorted = useMemo(() => [...items].sort((a, b) => a - b), [items]);
 
-  // Hilfsfunktion: Index unter dem Pointer finden
-  const getIndexFromClientY = (clientY) => {
-    const rects = itemRefs.current.map((el) => el?.getBoundingClientRect?.()).filter(Boolean);
-    for (let i = 0; i < rects.length; i++) {
-      const r = rects[i];
-      const mid = r.top + r.height / 2;
-      if (clientY < mid) return i;
-    }
-    return rects.length - 1;
-  };
+  const onClick = (val) => {
+    if (locked) return;
+    if (picked.includes(val)) return; // already chosen
+    const next = [...picked, val];
+    setPicked(next);
 
-  const onPointerDown = (idx) => (e) => {
-    // Pointer-Events aktivieren
-    e.currentTarget.setPointerCapture?.(e.pointerId);
-    setDragIndex(idx);
-    setDragOffset(0);
-  };
-
-  const onPointerMove = (e) => {
-    if (dragIndex === null) return;
-    // Scrollen unterdrücken bei Touch
-    if (e.pointerType === "touch") e.preventDefault();
-
-    // Offset anzeigen (für visuelles Feedback)
-    const currentRect = itemRefs.current[dragIndex]?.getBoundingClientRect?.();
-    if (!currentRect) return;
-    const delta = e.clientY - (currentRect.top + currentRect.height / 2);
-    setDragOffset(delta);
-
-    // Zielindex bestimmen und ggf. live umsortieren
-    const overIndex = getIndexFromClientY(e.clientY);
-    if (overIndex !== dragIndex) {
-      const next = [...items];
-      const [moved] = next.splice(dragIndex, 1);
-      next.splice(overIndex, 0, moved);
-      setItems(next);
-      setDragIndex(overIndex);
-      setDragOffset(0);
+    if (next.length === items.length) {
+      // evaluate
+      const ok = next.every((v, i) => v === sorted[i]);
+      setLocked(true);
+      if (ok) {
+        setMsg("✅ Richtig! +12");
+        onScore(12);
+        setTimeout(() => {
+          setItems(makeRound());
+          setPicked([]);
+          setMsg("");
+          setLocked(false);
+        }, 700);
+      } else {
+        setMsg("❌ Falsche Reihenfolge – versuch’s nochmal.");
+        setTimeout(() => {
+          setPicked([]);
+          setMsg("");
+          setLocked(false);
+        }, 800);
+      }
     }
   };
 
-  const onPointerUp = () => {
-    if (dragIndex === null) return;
-    setDragIndex(null);
-    setDragOffset(0);
-
-    // Nach Loslassen: prüfen ob sortiert
-    const sorted = [...items].sort((a, b) => a - b);
-    const ok = items.every((v, i) => v === sorted[i]);
-    if (ok) {
-      onScore(12);
-      // neue Runde
-      const fresh = [12, 27, 5, 33, 19].sort(() => Math.random() - 0.5);
-      setItems(fresh);
-    }
-  };
+  const pickIndex = (val) => picked.indexOf(val); // -1 if not selected yet
 
   return (
     <div style={styles.wrap}>
       <div style={styles.title}>Rechnung sortieren</div>
       <div style={{ opacity: 0.9, marginBottom: 6 }}>
-        Ziehe die Kärtchen in <b>aufsteigende</b> Reihenfolge.
+        Klicke die Kärtchen in <b>aufsteigender</b> Reihenfolge an.
       </div>
 
-      <div
-        style={styles.list}
-        onPointerMove={onPointerMove}
-        onPointerUp={onPointerUp}
-      >
-        {items.map((n, idx) => {
-          const isDragging = idx === dragIndex;
+      <div style={styles.grid}>
+        {items.map((val) => {
+          const i = pickIndex(val);
+          const selected = i !== -1;
           return (
-            <div
-              key={idx + "-" + n}
-              ref={(el) => (itemRefs.current[idx] = el)}
+            <button
+              key={val}
+              onClick={() => onClick(val)}
+              disabled={locked}
               style={{
                 ...styles.item,
-                outline: isDragging ? "2px solid #2563eb" : "2px solid #334155",
-                position: "relative",
-                zIndex: isDragging ? 2 : 1,
-                transform: isDragging ? `translateY(${dragOffset}px)` : "none",
-                touchAction: "none", // wichtig für mobile Drag
+                outline: selected ? "2px solid #2563eb" : "2px solid #334155",
+                opacity: selected ? 0.9 : 1,
+                cursor: locked ? "not-allowed" : "pointer",
               }}
-              onPointerDown={onPointerDown(idx)}
             >
-              <span style={{ fontWeight: 900, fontSize: 22 }}>{n}</span>
+              <span style={{ fontWeight: 900, fontSize: 22 }}>{val}</span>
               <span style={{ opacity: 0.7 }}>⠿</span>
-            </div>
+
+              {/* order badge */}
+              {selected && (
+                <span style={styles.badge}>
+                  {i + 1}
+                </span>
+              )}
+            </button>
           );
         })}
       </div>
 
-      <div style={{ marginTop: 6, color: "#cbd5e1" }}>
-        Tipp: Halten & ziehen – beim Loslassen wird geprüft.
-      </div>
+      <div style={{ marginTop: 8, color: "#cbd5e1", minHeight: 22 }}>{msg}</div>
     </div>
   );
 }
@@ -122,25 +93,38 @@ const styles = {
     minHeight: 260,
   },
   title: { fontSize: 26, fontWeight: 800 },
-  list: {
+  grid: {
     width: "100%",
     maxWidth: 520,
-    display: "flex",
-    flexDirection: "column",
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr",
     gap: 8,
     marginTop: 8,
-    // verhindert, dass Safari bei Touch-Drag scrollt
-    touchAction: "none",
   },
   item: {
+    position: "relative",
     background: "#0b1220",
     color: "#e5e7eb",
     borderRadius: 12,
-    padding: "12px 14px",
+    padding: "14px",
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
-    cursor: "grab",
     userSelect: "none",
+  },
+  badge: {
+    position: "absolute",
+    top: -10,
+    right: -10,
+    width: 28,
+    height: 28,
+    borderRadius: 999,
+    background: "#2563eb",
+    color: "white",
+    display: "grid",
+    placeItems: "center",
+    fontWeight: 900,
+    boxShadow: "0 6px 16px rgba(0,0,0,.35)",
+    border: "2px solid #1f2937",
   },
 };
