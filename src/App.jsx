@@ -1,7 +1,8 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import Menu from "./components/Menu";
 import Settings from "./components/Settings";
 import useLocalStorage from "./hooks/useLocalStorage";
+import GameRouter from "./components/GameRouter";
 
 const DEFAULT_SETTINGS = {
   enabledGames: {
@@ -17,26 +18,39 @@ const DEFAULT_SETTINGS = {
 };
 
 export default function App() {
-  // Screens: MENU | SETTINGS | GAME | RESULT
-  const [screen, setScreen] = useState("MENU");
+  const [screen, setScreen] = useState("MENU"); // MENU | SETTINGS | GAME | RESULT
   const [playerName, setPlayerName] = useLocalStorage("PLAYER_NAME", "");
   const [highscore, setHighscore] = useLocalStorage("HIGH_SCORE", 0);
   const [settings, setSettings] = useLocalStorage("SETTINGS", DEFAULT_SETTINGS);
 
   const [score, setScore] = useState(0);
   const [roundScore, setRoundScore] = useState(0);
+  const [currentGame, setCurrentGame] = useState(null);
+
+  const enabledGames = useMemo(
+    () => Object.entries(settings.enabledGames)
+      .filter(([, v]) => v)
+      .map(([k]) => k),
+    [settings.enabledGames]
+  );
 
   const startRound = () => {
     if (!playerName.trim()) {
       alert("Bitte gib einen Spielernamen ein.");
       return;
     }
+    if (enabledGames.length === 0) {
+      alert("Keine Spiele aktiv. Bitte in den Einstellungen Spiele aktivieren.");
+      setScreen("SETTINGS");
+      return;
+    }
+    const next = enabledGames[Math.floor(Math.random() * enabledGames.length)];
+    setCurrentGame(next);
     setRoundScore(0);
-    setScreen("GAME"); // (nächster Schritt: GameRouter einbauen)
+    setScreen("GAME");
   };
 
-  const endRound = () => {
-    const earned = Math.floor(Math.random() * 20) + 1; // Platzhalter
+  const onRoundEnd = (earned) => {
     setRoundScore(earned);
     const total = score + earned;
     setScore(total);
@@ -71,21 +85,12 @@ export default function App() {
         />
       )}
 
-      {screen === "GAME" && (
-        <div className="card" style={styles.centerCard}>
-          <h2 style={{ margin: 0 }}>Runde läuft …</h2>
-          <p style={{ color: "#cbd5e1" }}>
-            (Im nächsten Schritt kommt hier der Game-Router mit Timer & Skip)
-          </p>
-          <div style={{ display: "flex", gap: 8 }}>
-            <button className="btn" style={styles.btnSecondary} onClick={() => setScreen("MENU")}>
-              Abbrechen
-            </button>
-            <button className="btn" style={styles.btnPrimary} onClick={endRound}>
-              Runde beenden (Test)
-            </button>
-          </div>
-        </div>
+      {screen === "GAME" && currentGame && (
+        <GameRouter
+          game={currentGame}
+          roundSeconds={settings.roundSeconds}
+          onRoundEnd={onRoundEnd}
+        />
       )}
 
       {screen === "RESULT" && (
@@ -142,7 +147,7 @@ const styles = {
   input: {
     width: "100%",
     background: "#0b1220",
-    border: "2px solid #1f2937",
+    border: "2px solid "#1f2937",
     color: "#e5e7eb",
     padding: "10px 12px",
     borderRadius: 10,
