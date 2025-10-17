@@ -7,7 +7,7 @@ export const supabase = createClient(url, anon);
 
 /**
  * Speichert nur, wenn der neue Score besser ist als der bisherige
- * (pro Spieler + Spiel). Tabelle: highscores(player_name, game_name, score, created_at)
+ * (pro Spieler + Spiel). Tabelle: public.scores(player_name, game_name, score, created_at)
  */
 export async function addBestGameScore({ name, game, points }) {
   const player = String(name || "").trim().slice(0, 24);
@@ -18,9 +18,9 @@ export async function addBestGameScore({ name, game, points }) {
     return { error: "invalid_args" };
   }
 
-  // 1) aktuellen Bestwert holen
+  // aktuellen Bestwert holen
   const { data: best, error: readErr } = await supabase
-    .from("highscores")
+    .from("scores")
     .select("id, score")
     .eq("player_name", player)
     .eq("game_name", g)
@@ -28,15 +28,12 @@ export async function addBestGameScore({ name, game, points }) {
     .limit(1)
     .maybeSingle();
 
-  if (readErr) {
-    console.warn("supabase read error", readErr);
-    // wir versuchen trotzdem einen Insert
-  }
+  if (readErr) console.warn("supabase read error", readErr);
 
-  // 2) nur speichern, wenn besser
+  // nur speichern, wenn besser
   if (!best || p > (best?.score ?? -1)) {
     const { data, error } = await supabase
-      .from("highscores")
+      .from("scores")
       .insert([{ player_name: player, game_name: g, score: p }])
       .select()
       .single();
@@ -47,16 +44,14 @@ export async function addBestGameScore({ name, game, points }) {
 }
 
 /**
- * Topliste für EIN Spiel holen (clientseitig auf „bester pro Spieler“ dedupliziert).
- * Gibt maximal `limit` Spieler zurück.
+ * Topliste für EIN Spiel (dedupliziert auf „bester pro Spieler“).
  */
 export async function fetchTopByGame(game, limit = 50) {
   const g = String(game || "").trim();
   if (!g) return { data: [], error: null };
 
-  // Rohdaten (mehr als limit laden, damit Dedup klappt)
   const { data, error } = await supabase
-    .from("highscores")
+    .from("scores")
     .select("player_name, score, created_at")
     .eq("game_name", g)
     .order("score", { ascending: false })
@@ -65,7 +60,7 @@ export async function fetchTopByGame(game, limit = 50) {
 
   if (error) return { data: [], error };
 
-  // Deduplizieren: pro player_name nur der erste (beste) Eintrag
+  // Dedupe: pro Spieler nur der erste (beste) Eintrag
   const seen = new Set();
   const unique = [];
   for (const row of data) {
@@ -75,6 +70,5 @@ export async function fetchTopByGame(game, limit = 50) {
     unique.push(row);
     if (unique.length >= limit) break;
   }
-
   return { data: unique, error: null };
 }
