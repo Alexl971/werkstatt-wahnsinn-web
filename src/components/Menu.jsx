@@ -1,5 +1,15 @@
-import React, { useEffect, useRef, useState } from "react";
+// src/components/Menu.jsx
+import React from "react";
 
+/**
+ * Props:
+ * - onStart(): void
+ * - onSettings(): void
+ * - onHighscores(): void
+ * - playerName: string
+ * - setPlayerName(v: string): void
+ * - highscore: number
+ */
 export default function Menu({
   onStart,
   onSettings,
@@ -8,172 +18,138 @@ export default function Menu({
   setPlayerName,
   highscore,
 }) {
-  const inputRef = useRef(null);
-  const [showInstallHint, setShowInstallHint] = useState(false);
-  const [deferredPrompt, setDeferredPrompt] = useState(null);
-
-  useEffect(() => {
-    const t = setTimeout(() => inputRef.current?.focus?.(), 150);
-    return () => clearTimeout(t);
-  }, []);
-
-  // PWA-Install-Hinweis (nur, wenn nicht installiert & noch nicht gesehen)
-  useEffect(() => {
-    const installed = window.matchMedia("(display-mode: standalone)").matches;
-    if (installed) return;
-
-    if (localStorage.getItem("PWA_HINT_SEEN")) return;
-
-    const onBIP = (e) => {
-      e.preventDefault();
-      setDeferredPrompt(e);
-      setShowInstallHint(true);
-    };
-    window.addEventListener("beforeinstallprompt", onBIP);
-
-    // iOS Safari hat kein beforeinstallprompt -> trotzdem dezenten Hinweis
-    if (/iphone|ipad|ipod/i.test(navigator.userAgent)) {
-      const t = setTimeout(() => setShowInstallHint(true), 1500);
-      return () => {
-        clearTimeout(t);
-        window.removeEventListener("beforeinstallprompt", onBIP);
-      };
-    }
-    return () => window.removeEventListener("beforeinstallprompt", onBIP);
-  }, []);
-
-  const handleInstall = async () => {
-    if (deferredPrompt) {
-      deferredPrompt.prompt();
-      await deferredPrompt.userChoice;
-    } else {
-      alert("📲 iOS: Teilen ▸ Zum Home-Bildschirm hinzufügen");
-    }
-    setShowInstallHint(false);
-    localStorage.setItem("PWA_HINT_SEEN", "1");
-  };
-
-  const canStart = playerName.trim().length > 0;
-  const onKeyDown = (e) => {
-    if (e.key === "Enter" && canStart) onStart();
-  };
-
   return (
-    <div style={styles.screen}>
+    <div style={styles.wrap}>
       <div style={styles.card}>
-        {/* Logo */}
-        <div style={styles.logo}>
-          <span style={{ fontWeight: 900, letterSpacing: 1 }}>WW</span>
+        {/* Logo / App-Icon */}
+        <div style={styles.logoWrap}>
+          <div style={styles.logoGlow} />
+          <div style={styles.logo}>WW</div>
         </div>
 
         <h1 style={styles.title}>Werkstatt-Wahnsinn</h1>
-        <p style={styles.subtitle}>Mini-Games · Reaktion · Quiz · schwarzer Humor</p>
+        <div style={styles.subtitle}>Mini-Games · Reaktion · Quiz · schwarzer Humor</div>
 
         {/* Name */}
-        <div style={styles.fieldWrap}>
-          <label htmlFor="playerName" style={styles.label}>Dein Name</label>
-          <input
-            id="playerName"
-            ref={inputRef}
-            value={playerName}
-            onChange={(e) => setPlayerName(e.target.value)}
-            onKeyDown={onKeyDown}
-            placeholder="z. B. Alex"
-            autoComplete="name"
-            style={styles.input}
-          />
-        </div>
+        <label style={styles.label} htmlFor="playerName">
+          Dein Name
+        </label>
+        <input
+          id="playerName"
+          placeholder="Spielername"
+          value={playerName}
+          onChange={(e) => setPlayerName(e.target.value)}
+          style={styles.input}
+        />
 
-        {/* Buttons */}
-        <div style={styles.actions}>
-          <button
-            className="btn"
-            onClick={onStart}
-            disabled={!canStart}
-            style={{ ...styles.btnPrimary, ...(canStart ? {} : styles.btnDisabled) }}
-          >
-            🎮 Runde starten
-          </button>
-          <button className="btn" onClick={onSettings} style={styles.btnSecondary}>
-            ⚙️ Einstellungen
-          </button>
-          <button className="btn" onClick={onHighscores} style={styles.btnGhost}>
-            🏆 Highscores
-          </button>
-        </div>
+        {/* CTAs */}
+        <button className="btn" style={styles.btnPrimary} onClick={onStart}>
+          🎮&nbsp;Runde starten
+        </button>
+        <button className="btn" style={styles.btnSecondary} onClick={onSettings}>
+          ⚙️&nbsp;Einstellungen
+        </button>
+        <button className="btn" style={styles.btnGhost} onClick={onHighscores}>
+          🏆&nbsp;Highscores
+        </button>
 
-        {/* Info */}
-        <div style={styles.info}>
-          <div>
-            <span style={styles.infoLabel}>Highscore lokal:</span> <b>{highscore ?? 0}</b>
+        {/* Info-Footer in der Karte */}
+        <div style={styles.infoBox}>
+          <div style={styles.infoRow}>
+            <span style={styles.infoLabel}>Highscore lokal:</span>
+            <span style={styles.infoValue}>{highscore ?? 0}</span>
+            <span style={styles.dot} />
+            <span style={styles.clock}>🕓</span>
+            <span style={styles.infoLabel}>
+              Rundenlänge: <b>20&nbsp;s</b> (fix)
+            </span>
           </div>
-          <div style={styles.dot} />
-          <div>🕒 Rundenlänge: <b>20 s</b> (fix)</div>
         </div>
       </div>
 
-      {/* Install-Hint */}
-      {showInstallHint && (
-        <div style={styles.install}>
-          <span style={{ fontWeight: 700 }}>📱 Zum Home-Bildschirm hinzufügen</span>
-          <div style={{ display: "flex", gap: 8 }}>
-            <button style={styles.installBtn} onClick={handleInstall}>Jetzt hinzufügen</button>
-            <button
-              style={styles.installClose}
-              onClick={() => {
-                setShowInstallHint(false);
-                localStorage.setItem("PWA_HINT_SEEN", "1");
-              }}
-              aria-label="Hinweis schließen"
-            >
-              ✕
-            </button>
-          </div>
-        </div>
-      )}
+      {/* Page-Footer */}
+      <div style={styles.footer}>
+        <span>Vite + React · PWA</span>
+        <span>© 2025 Werkstatt-Wahnsinn</span>
+      </div>
     </div>
   );
 }
 
-/* ========== Styles ========== */
 const styles = {
-  screen: {
+  /* Vollflächig, wirklich zentriert, mit safe-area */
+  wrap: {
     minHeight: "100svh",
     padding:
-      "calc(16px + env(safe-area-inset-top)) 16px calc(16px + env(safe-area-inset-bottom)) 16px",
+      "calc(16px + env(safe-area-inset-top)) 16px calc(20px + env(safe-area-inset-bottom)) 16px",
     display: "grid",
-    gridTemplateRows: "1fr",
+    gridTemplateRows: "1fr auto",
     alignItems: "center",
     justifyItems: "center",
-    background:
-      "radial-gradient(1200px 600px at 50% -10%, rgba(37,99,235,.12), transparent 60%)",
+    background: "#0f172a",
+    color: "#e5e7eb",
+    backgroundImage:
+      "radial-gradient(1200px 600px at 50% -10%, rgba(37,99,235,.10), transparent 60%)",
+    fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, sans-serif",
   },
+
+  /* Karte */
   card: {
-    width: "min(560px, calc(100vw - 32px))",
+    width: "min(720px, calc(100vw - 32px))",
     background: "#111827",
     border: "2px solid #1f2937",
-    borderRadius: 20,
-    padding: 20,
-    display: "grid",
-    justifyItems: "center",
-    gap: 14,
-    color: "#e5e7eb",
+    borderRadius: 18,
+    padding: "20px 18px 18px",
+    boxShadow: "0 10px 40px rgba(0,0,0,.25)",
+  },
+
+  /* Logo */
+  logoWrap: { position: "relative", display: "grid", placeItems: "center", marginBottom: 8 },
+  logoGlow: {
+    position: "absolute",
+    width: 104,
+    height: 104,
+    borderRadius: 24,
+    background:
+      "radial-gradient(circle at 30% 30%, rgba(59,130,246,.35), transparent 60%), radial-gradient(circle at 70% 70%, rgba(16,185,129,.35), transparent 55%)",
+    filter: "blur(8px)",
   },
   logo: {
-    width: 72,
-    height: 72,
-    borderRadius: 18,
+    position: "relative",
+    width: 84,
+    height: 84,
+    borderRadius: 20,
     display: "grid",
     placeItems: "center",
-    background: "linear-gradient(150deg,#34d399 0%,#22d3ee 55%,#3b82f6 100%)",
+    fontWeight: 800,
     color: "#0b1220",
-    fontSize: 22,
-    border: "2px solid #1f2937",
+    letterSpacing: 1,
+    background:
+      "linear-gradient(135deg, #34d399 0%, #60a5fa 55%, #2563eb 100%)",
+    boxShadow: "0 8px 22px rgba(37,99,235,.35)",
+    margin: "0 auto",
   },
-  title: { margin: 0, marginTop: 6, fontSize: 32, textAlign: "center", fontWeight: 900 },
-  subtitle: { margin: 0, color: "#cbd5e1", textAlign: "center" },
-  fieldWrap: { width: "100%", maxWidth: 460 },
-  label: { display: "block", fontSize: 13, color: "#9ca3af", marginBottom: 6 },
+
+  title: {
+    margin: "4px 0 6px 0",
+    fontSize: "clamp(28px, 6vw, 44px)",
+    lineHeight: 1.1,
+    fontWeight: 900,
+    textAlign: "center",
+  },
+  subtitle: {
+    textAlign: "center",
+    color: "#cbd5e1",
+    marginBottom: 14,
+    fontSize: "clamp(14px, 3.2vw, 18px)",
+  },
+
+  label: {
+    display: "block",
+    margin: "6px 0 6px 4px",
+    fontSize: 14,
+    color: "#cbd5e1",
+  },
   input: {
     width: "100%",
     background: "#0b1220",
@@ -183,89 +159,80 @@ const styles = {
     borderRadius: 12,
     outline: "none",
     fontSize: 16,
+    marginBottom: 12,
   },
-  actions: { width: "100%", maxWidth: 460, display: "grid", gap: 10 },
+
   btnPrimary: {
     width: "100%",
     background: "#2563eb",
-    borderRadius: 12,
+    borderRadius: 14,
     border: "none",
     color: "white",
     padding: "14px 16px",
     cursor: "pointer",
     fontWeight: 800,
-    fontSize: 16,
+    fontSize: 18,
+    boxShadow: "0 6px 18px rgba(37,99,235,.35)",
+    marginTop: 2,
   },
   btnSecondary: {
     width: "100%",
-    background: "#334155",
-    borderRadius: 12,
+    background: "#374151",
+    borderRadius: 14,
     border: "none",
     color: "#e5e7eb",
-    padding: "12px 16px",
+    padding: "14px 16px",
     cursor: "pointer",
     fontWeight: 800,
+    fontSize: 18,
+    marginTop: 10,
   },
   btnGhost: {
     width: "100%",
-    background: "#0b1220",
-    borderRadius: 12,
-    border: "2px solid #1f2937",
-    color: "#e5e7eb",
-    padding: "12px 16px",
-    cursor: "pointer",
-    fontWeight: 800,
-  },
-  btnDisabled: { opacity: 0.55, cursor: "not-allowed", filter: "grayscale(25%)" },
-  info: {
-    width: "100%",
-    maxWidth: 460,
-    marginTop: 4,
-    padding: "10px 12px",
+    background: "transparent",
     borderRadius: 14,
     border: "2px solid #1f2937",
-    background: "#0b1220",
-    display: "flex",
-    gap: 10,
-    alignItems: "center",
-    justifyContent: "center",
-    flexWrap: "wrap",
-    color: "#cbd5e1",
-  },
-  infoLabel: { opacity: 0.85, marginRight: 4 },
-  dot: { width: 6, height: 6, borderRadius: 999, background: "#334155" },
-  install: {
-    position: "fixed",
-    left: "50%",
-    bottom: "calc(env(safe-area-inset-bottom) + 14px)",
-    transform: "translateX(-50%)",
-    maxWidth: "calc(100vw - 24px)",
-    width: "fit-content",
-    background: "rgba(17,24,39,.96)",
-    border: "2px solid #1f2937",
-    borderRadius: 16,
-    padding: "12px 14px",
-    display: "flex",
-    alignItems: "center",
-    gap: 10,
     color: "#e5e7eb",
-    zIndex: 100,
-  },
-  installBtn: {
-    background: "#2563eb",
-    color: "#fff",
-    border: "none",
-    borderRadius: 10,
-    padding: "8px 10px",
-    fontWeight: 700,
+    padding: "14px 16px",
     cursor: "pointer",
-  },
-  installClose: {
-    background: "transparent",
-    border: "none",
-    color: "#9ca3af",
+    fontWeight: 800,
     fontSize: 18,
-    cursor: "pointer",
-    padding: 4,
+    marginTop: 10,
+  },
+
+  infoBox: {
+    marginTop: 14,
+    borderRadius: 16,
+    border: "2px solid #1f2937",
+    background: "#0b1220",
+    padding: "12px 14px",
+  },
+  infoRow: {
+    display: "flex",
+    alignItems: "center",
+    gap: 10,
+    flexWrap: "wrap",
+    justifyContent: "center",
+  },
+  infoLabel: { color: "#cbd5e1" },
+  infoValue: { fontWeight: 900, color: "#e5e7eb", minWidth: 24, textAlign: "right" },
+  dot: {
+    width: 6,
+    height: 6,
+    borderRadius: 999,
+    background: "#64748b",
+    display: "inline-block",
+  },
+  clock: { filter: "grayscale(.2)" },
+
+  footer: {
+    width: "100%",
+    maxWidth: 720,
+    display: "flex",
+    justifyContent: "space-between",
+    color: "#94a3b8",
+    fontSize: 12,
+    paddingTop: 10,
+    opacity: 0.9,
   },
 };
