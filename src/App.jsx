@@ -1,11 +1,11 @@
 import React, { useMemo, useState } from "react";
 import Menu from "./components/Menu";
 import Settings from "./components/Settings";
-import Highscores from "./components/Highscores"; // Tabs pro Spiel, nutzt fetchTopByGame
+import Highscores from "./components/Highscores";
 import useLocalStorage from "./hooks/useLocalStorage";
-import GameRouter from "./components/GameRouter"; // speichert Best-Score via addBestGameScore
+import GameRouter from "./components/GameRouter";
 
-// Standard-Einstellungen
+// Standard-Einstellungen (Rundenlänge entfernt)
 const DEFAULT_SETTINGS = {
   enabledGames: {
     TAP_FRENZY: true,
@@ -15,25 +15,19 @@ const DEFAULT_SETTINGS = {
     BRAKE_TEST: true,
     CODE_TYPER: true,
   },
-  roundSeconds: 20,
   soundEnabled: true,
 };
 
 export default function App() {
-  // Screens: MENU | SETTINGS | GAME | RESULT | HIGHSCORES
-  const [screen, setScreen] = useState("MENU");
-
-  // Persistente Werte
+  const [screen, setScreen] = useState("MENU"); // MENU | SETTINGS | GAME | RESULT | HIGHSCORES
   const [playerName, setPlayerName] = useLocalStorage("PLAYER_NAME", "");
   const [highscore, setHighscore] = useLocalStorage("HIGH_SCORE", 0);
   const [settings, setSettings] = useLocalStorage("SETTINGS", DEFAULT_SETTINGS);
 
-  // Runden-/Spiel-State
-  const [score, setScore] = useState(0);           // Gesamtscore (lokal) über viele Runden
-  const [roundScore, setRoundScore] = useState(0); // Score in letzter Runde
+  const [score, setScore] = useState(0);
+  const [roundScore, setRoundScore] = useState(0);
   const [currentGame, setCurrentGame] = useState(null);
 
-  // Liste aktivierter Spiele (Schalter in Settings)
   const enabledGames = useMemo(
     () =>
       Object.entries(settings.enabledGames)
@@ -42,7 +36,6 @@ export default function App() {
     [settings.enabledGames]
   );
 
-  // Runde starten -> zufälliges aktives Spiel wählen
   const startRound = () => {
     if (!playerName.trim()) {
       alert("Bitte gib einen Spielernamen ein.");
@@ -59,7 +52,6 @@ export default function App() {
     setScreen("GAME");
   };
 
-  // Wird von GameRouter aufgerufen, wenn die Runde endet
   const onRoundEnd = (earned) => {
     setRoundScore(earned);
     const total = score + earned;
@@ -92,34 +84,40 @@ export default function App() {
       )}
 
       {screen === "HIGHSCORES" && (
-        <div className="card" style={{ ...styles.centerCard, maxWidth: 980 }}>
-          {/* Highscores zeigt Tabs pro Spiel und markiert optional den aktuellen Spieler */}
-          <Highscores onBack={() => setScreen("MENU")} currentPlayer={playerName} />
+        <div className="card" style={{ ...styles.centerCard, maxWidth: 920 }}>
+          <Highscores onBack={() => setScreen("MENU")} />
         </div>
       )}
 
       {screen === "GAME" && currentGame && (
         <GameRouter
           game={currentGame}
-          roundSeconds={settings.roundSeconds}
+          roundSeconds={20} // <-- Fix: Rundenlänge auf 20 Sekunden
           onRoundEnd={onRoundEnd}
-          playerName={playerName} // wichtig: damit Online-Score gespeichert wird
+          playerName={playerName}
         />
       )}
 
       {screen === "RESULT" && (
-        <div className="card" style={styles.centerCard}>
-          <h2 style={{ margin: 0 }}>Rundenende</h2>
-          <div style={{ marginTop: 6 }}>Runde: {roundScore} Punkte</div>
-          <div>Gesamt: {score} Punkte</div>
-          <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
-            <button className="btn" style={styles.btnPrimary} onClick={startRound}>
+        <div className="card" style={styles.resultCard}>
+          <div style={styles.resultTop}>
+            <h2 style={{ margin: 0, fontSize: 28 }}>Rundenende</h2>
+            <div style={{ marginTop: 10, fontSize: 18 }}>
+              Runde: <b>{roundScore}</b> Punkte
+            </div>
+            <div style={{ marginTop: 4, fontSize: 18 }}>
+              Gesamt: <b>{score}</b> Punkte
+            </div>
+          </div>
+
+          <div style={styles.resultFooter}>
+            <button className="btn" style={{ ...styles.btnPrimary, flex: 1 }} onClick={startRound}>
               Nächste Runde
             </button>
-            <button className="btn" style={styles.btnSecondary} onClick={() => setScreen("MENU")}>
+            <button className="btn" style={{ ...styles.btnSecondary, flex: 1 }} onClick={() => setScreen("MENU")}>
               Menü
             </button>
-            <button className="btn" style={styles.btnGhost} onClick={() => setScreen("HIGHSCORES")}>
+            <button className="btn" style={{ ...styles.btnGhost, flex: 1 }} onClick={() => setScreen("HIGHSCORES")}>
               🏆 Highscores
             </button>
           </div>
@@ -156,17 +154,42 @@ const styles = {
     borderRadius: 18,
     padding: 20,
     display: "flex",
-    gap: 10,
     flexDirection: "column",
     alignItems: "center",
     textAlign: "center",
+  },
+  resultCard: {
+    width: "100%",
+    maxWidth: 560,
+    background: "#111827",
+    border: "2px solid #1f2937",
+    borderRadius: 18,
+    padding: 20,
+    display: "flex",
+    flexDirection: "column",
+    justifyContent: "space-between",
+    minHeight: 360,
+    gap: 12,
+    paddingBottom: "calc(20px + env(safe-area-inset-bottom))",
+  },
+  resultTop: {
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    textAlign: "center",
+    gap: 4,
+  },
+  resultFooter: {
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr 1fr",
+    gap: 8,
   },
   btnPrimary: {
     background: "#2563eb",
     borderRadius: 12,
     border: "none",
     color: "white",
-    padding: "12px 16px",
+    padding: "14px 16px",
     cursor: "pointer",
     fontWeight: 700,
   },
@@ -175,7 +198,7 @@ const styles = {
     borderRadius: 12,
     border: "none",
     color: "#e5e7eb",
-    padding: "12px 16px",
+    padding: "14px 16px",
     cursor: "pointer",
     fontWeight: 700,
   },
@@ -184,7 +207,7 @@ const styles = {
     borderRadius: 12,
     border: "2px solid #1f2937",
     color: "#e5e7eb",
-    padding: "12px 16px",
+    padding: "14px 16px",
     cursor: "pointer",
     fontWeight: 700,
   },
