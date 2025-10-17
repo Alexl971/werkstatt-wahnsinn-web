@@ -3,34 +3,31 @@ import { createClient } from "@supabase/supabase-js";
 const url  = import.meta.env.VITE_SUPABASE_URL;
 const anon = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-export const supabase = createClient(url, anon);
+if (!url || !anon) {
+  console.warn("[supabase-best] ENV fehlt. VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY nicht gesetzt?");
+}
 
-/**
- * Speichert nur, wenn der neue Score besser ist als der bisherige
- * (pro Spieler + Spiel). Tabelle: public.scores(player_name, game_name, score, created_at)
- */
+export const supabase = createClient(url || "", anon || "");
+
+/** Nur bester Score pro Spieler+Spiel */
 export async function addBestGameScore({ name, game, points }) {
   const player = String(name || "").trim().slice(0, 24);
   const g = String(game || "").trim();
   const p = Number(points);
-
   if (!player || !g || !Number.isFinite(p) || p < 0) {
-    return { error: "invalid_args" };
+    return { error: new Error("invalid_args") };
   }
 
-  // aktuellen Bestwert holen
   const { data: best, error: readErr } = await supabase
-    .from("scores")
+    .from("scores") // <- deine Tabelle
     .select("id, score")
     .eq("player_name", player)
     .eq("game_name", g)
     .order("score", { ascending: false })
     .limit(1)
     .maybeSingle();
+  if (readErr) return { error: readErr };
 
-  if (readErr) console.warn("supabase read error", readErr);
-
-  // nur speichern, wenn besser
   if (!best || p > (best?.score ?? -1)) {
     const { data, error } = await supabase
       .from("scores")
@@ -39,16 +36,13 @@ export async function addBestGameScore({ name, game, points }) {
       .single();
     return { data, error };
   }
-
   return { data: best, skipped: true };
 }
 
-/**
- * Topliste für EIN Spiel (dedupliziert auf „bester pro Spieler“).
- */
+/** Topliste pro Spiel (dedupliziert auf besten pro Spieler) */
 export async function fetchTopByGame(game, limit = 50) {
   const g = String(game || "").trim();
-  if (!g) return { data: [], error: null };
+  if (!g) return { data: [], error: new Error("no_game") };
 
   const { data, error } = await supabase
     .from("scores")
@@ -60,11 +54,10 @@ export async function fetchTopByGame(game, limit = 50) {
 
   if (error) return { data: [], error };
 
-  // Dedupe: pro Spieler nur der erste (beste) Eintrag
   const seen = new Set();
   const unique = [];
-  for (const row of data) {
-    const key = row.player_name.toLowerCase();
+  for (const row of data || []) {
+    const key = (row.player_name || "").toLowerCase();
     if (seen.has(key)) continue;
     seen.add(key);
     unique.push(row);

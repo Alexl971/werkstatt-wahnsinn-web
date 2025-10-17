@@ -16,12 +16,20 @@ export default function Highscores({ onBack }) {
   const [active, setActive] = useState(GAMES[0]);
   const [rows, setRows] = useState([]);
   const [state, setState] = useState("loading"); // loading | ok | error
+  const [errText, setErrText] = useState("");
 
   const load = async (game) => {
     setState("loading");
     const { data, error } = await fetchTopByGame(game, 50);
-    if (error) { setRows([]); setState("error"); }
-    else { setRows(data || []); setState("ok"); }
+    if (error) {
+      console.error("[Highscores] fetchTopByGame error:", error);
+      setErrText(error.message || String(error));
+      setRows([]);
+      setState("error");
+    } else {
+      setRows(data || []);
+      setState("ok");
+    }
   };
 
   useEffect(() => { load(active); }, [active]);
@@ -65,7 +73,12 @@ export default function Highscores({ onBack }) {
         </div>
 
         {state === "loading" && <div style={styles.muted}>Lade …</div>}
-        {state === "error" && <div style={styles.muted}>Konnte Highscores nicht laden.</div>}
+        {state === "error" && (
+          <div style={styles.muted}>
+            Konnte Highscores nicht laden.<br />
+            <small style={{opacity:.85}}>Fehler: {errText}</small>
+          </div>
+        )}
 
         {state === "ok" && (
           rows.length ? (
