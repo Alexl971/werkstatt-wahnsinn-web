@@ -1,15 +1,14 @@
-// src/App.jsx
 import React, { useMemo, useState } from "react";
 import Menu from "./components/Menu";
 import Settings from "./components/Settings";
 import Highscores from "./components/Highscores";
 import GameRouter from "./components/GameRouter";
-import useLocalStorage from "./hooks/useLocalStorage";
-
 import Login from "./components/Login";
 import { getAuthUser, signOutLocal } from "./lib/auth";
 
-// Standard-Einstellungen
+// feste 20s
+const ROUND_SECONDS = 20;
+
 const DEFAULT_SETTINGS = {
   enabledGames: {
     TAP_FRENZY: true,
@@ -19,7 +18,7 @@ const DEFAULT_SETTINGS = {
     BRAKE_TEST: true,
     CODE_TYPER: true,
   },
-  roundSeconds: 20,      // fix
+  roundSeconds: ROUND_SECONDS, // wird nicht mehr geändert
   soundEnabled: true,
 };
 
@@ -30,17 +29,22 @@ export default function App() {
   // Screens: MENU | SETTINGS | GAME | RESULT | HIGHSCORES
   const [screen, setScreen] = useState("MENU");
 
-  // Persistente Werte
-  const [playerName, setPlayerName] = useLocalStorage("PLAYER_NAME", "");
-  const [highscore, setHighscore] = useLocalStorage("HIGH_SCORE", 0);
-  const [settings, setSettings] = useLocalStorage("SETTINGS", DEFAULT_SETTINGS);
+  // Lokale Highscore-Anzeige (der gesamte Score über viele Runden auf dem Gerät)
+  const [highscore, setHighscore] = useState(() => {
+    const raw = localStorage.getItem("HIGH_SCORE");
+    return raw ? Number(raw) : 0;
+  });
+
+  const [settings, setSettings] = useState(() => {
+    const raw = localStorage.getItem("SETTINGS");
+    return raw ? JSON.parse(raw) : DEFAULT_SETTINGS;
+  });
 
   // Runden-/Spiel-State
-  const [score, setScore] = useState(0);          // Gesamtscore (lokal)
+  const [score, setScore] = useState(0);
   const [roundScore, setRoundScore] = useState(0);
   const [currentGame, setCurrentGame] = useState(null);
 
-  // Liste aktivierter Spiele
   const enabledGames = useMemo(
     () =>
       Object.entries(settings.enabledGames)
@@ -49,11 +53,13 @@ export default function App() {
     [settings.enabledGames]
   );
 
+  const persistSettings = (next) => {
+    setSettings(next);
+    localStorage.setItem("SETTINGS", JSON.stringify(next));
+  };
+
   const startRound = () => {
-    if (!playerName.trim()) {
-      alert("Bitte gib einen Spielernamen ein.");
-      return;
-    }
+    if (!authUser) return; // Safeguard
     if (enabledGames.length === 0) {
       alert("Keine Spiele aktiv. Bitte in den Einstellungen Spiele aktivieren.");
       setScreen("SETTINGS");
@@ -66,29 +72,32 @@ export default function App() {
   };
 
   const onRoundEnd = (earned) => {
-    setRoundScore(earned);
     const total = score + earned;
     setScore(total);
-    if (total > highscore) setHighscore(total);
+    setRoundScore(earned);
+    if (total > highscore) {
+      setHighscore(total);
+      localStorage.setItem("HIGH_SCORE", String(total));
+    }
     setScreen("RESULT");
   };
 
   const logout = () => {
     signOutLocal();
-    setAuthUser(null);
     setScreen("MENU");
+    setCurrentGame(null);
+    setScore(0);
+    setRoundScore(0);
+    setAuthUser(null);
   };
 
-  // Wenn nicht eingeloggt -> Login anzeigen
-  if (!authUser) {
-    return <Login onSuccess={(u) => setAuthUser(u)} />;
-  }
+  // Login-Gate
+  if (!authUser) return <Login onSuccess={(u) => setAuthUser(u)} />;
 
   return (
     <div style={styles.app}>
       {screen === "MENU" && (
         <div className="card" style={styles.card}>
-          {/* kleiner Header mit Login-Info + Logout */}
           <div style={styles.topBar}>
             <div style={{ opacity: .9 }}>
               Eingeloggt als <b>{authUser.username}</b>
@@ -97,12 +106,12 @@ export default function App() {
           </div>
 
           <Menu
+            // Spielername-Eingabe ist entfernt – Menü zeigt nur Buttons/Infos
             onStart={startRound}
             onSettings={() => setScreen("SETTINGS")}
             onHighscores={() => setScreen("HIGHSCORES")}
-            playerName={playerName}
-            setPlayerName={setPlayerName}
             highscore={highscore}
+            username={authUser.username}
           />
         </div>
       )}
@@ -110,7 +119,7 @@ export default function App() {
       {screen === "SETTINGS" && (
         <Settings
           settings={settings}
-          setSettings={setSettings}
+          setSettings={persistSettings}
           onBack={() => setScreen("MENU")}
         />
       )}
@@ -124,10 +133,9 @@ export default function App() {
       {screen === "GAME" && currentGame && (
         <GameRouter
           game={currentGame}
-          roundSeconds={settings.roundSeconds}
+          roundSeconds={ROUND_SECONDS}     // fix 20s
           onRoundEnd={onRoundEnd}
-          playerName={playerName}
-          user={authUser}                 // << wichtig für Online-Score (user_id)
+          user={authUser}                  // wichtig für Online-Score
         />
       )}
 
@@ -136,7 +144,7 @@ export default function App() {
           <h2 style={{ margin: 0 }}>Rundenende</h2>
           <div style={{ marginTop: 6 }}>Runde: {roundScore} Punkte</div>
           <div>Gesamt: {score} Punkte</div>
-          <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
+          <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap", justifyContent: "center" }}>
             <button className="btn" style={styles.btnPrimary} onClick={startRound}>
               Nächste Runde
             </button>
@@ -191,10 +199,9 @@ const styles = {
     border: "2px solid #1f2937",
     borderRadius: 18,
     padding: 20,
-    display: "flex",
+    display: "grid",
     gap: 10,
-    flexDirection: "column",
-    alignItems: "center",
+    justifyItems: "center",
     textAlign: "center",
   },
   btnPrimary: {

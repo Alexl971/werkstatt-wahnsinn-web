@@ -9,26 +9,27 @@ import { addBestGameScore } from "../lib/supabase-best";
 
 /**
  * props:
- * - game: string ('TAP_FRENZY' ...)
- * - roundSeconds: number
+ * - game: string
+ * - roundSeconds: number (wir übergeben fix 20)
  * - onRoundEnd(earned: number): void
- * - playerName: string
+ * - user: { id, username }
  */
-export default function GameRouter({ game, roundSeconds, onRoundEnd, playerName }) {
+export default function GameRouter({ game, roundSeconds, onRoundEnd, user }) {
   const [earned, setEarned] = useState(0);
-  const [timeLeft, setTimeLeft] = useState(roundSeconds);
+  const [timeLeft, setTimeLeft] = useState(roundSeconds || 20);
   const [confirmingEnd, setConfirmingEnd] = useState(false);
-  const confirmTimerRef = useRef(null);
+
   const timerRef = useRef(null);
+  const confirmTimerRef = useRef(null);
 
   useEffect(() => {
     setEarned(0);
-    setTimeLeft(roundSeconds);
+    setTimeLeft(roundSeconds || 20);
     setConfirmingEnd(false);
     clearTimeout(confirmTimerRef.current);
   }, [game, roundSeconds]);
 
-  // Countdown
+  // stabiler Countdown
   useEffect(() => {
     clearInterval(timerRef.current);
     timerRef.current = setInterval(() => {
@@ -37,7 +38,6 @@ export default function GameRouter({ game, roundSeconds, onRoundEnd, playerName 
     return () => clearInterval(timerRef.current);
   }, [game, roundSeconds]);
 
-  // Rundenende
   useEffect(() => {
     if (timeLeft === 0) endRound();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -46,13 +46,12 @@ export default function GameRouter({ game, roundSeconds, onRoundEnd, playerName 
   const add = (n) => setEarned((e) => e + n);
 
   const endRound = async () => {
-    // Online-Highscore pro Spiel aktualisieren
-    if (playerName && game && Number.isFinite(earned)) {
-      try {
-        await addBestGameScore(playerName, game, earned);
-      } catch {
-        // ignoriere Netzwerkfehler still
-      }
+    try {
+      // Spielername = Username
+      const playerName = user?.username || "Anonymous";
+      await addBestGameScore(playerName, game, earned, user);
+    } catch {
+      /* still – kein Blocker fürs UI */
     }
     onRoundEnd(earned);
   };
@@ -66,7 +65,6 @@ export default function GameRouter({ game, roundSeconds, onRoundEnd, playerName 
 
   return (
     <div style={styles.shell}>
-      {/* Header */}
       <div style={styles.header}>
         <span style={styles.badge}>⏱️ {timeLeft}s</span>
         <span style={styles.badge}>Punkte: {earned}</span>
@@ -75,7 +73,6 @@ export default function GameRouter({ game, roundSeconds, onRoundEnd, playerName 
         </button>
       </div>
 
-      {/* schlanke Confirm-Zeile (kein Overlay) */}
       {confirmingEnd && (
         <div style={styles.confirmRow}>
           <span>Beenden wirklich? Tippe erneut innerhalb von 2 Sekunden.</span>
@@ -83,7 +80,6 @@ export default function GameRouter({ game, roundSeconds, onRoundEnd, playerName 
         </div>
       )}
 
-      {/* Body */}
       <div style={styles.cardBody}>
         {game === "TAP_FRENZY" && <TapFrenzy onScore={add} />}
         {game === "QUIZ" && <QuizRound onScore={add} />}

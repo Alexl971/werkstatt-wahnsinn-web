@@ -1,4 +1,3 @@
-// src/components/Menu.jsx
 import React from "react";
 
 /**
@@ -6,22 +5,20 @@ import React from "react";
  * - onStart()
  * - onSettings()
  * - onHighscores()
- * - playerName
- * - setPlayerName
- * - highscore
+ * - highscore: number
+ * - username: string
  */
 export default function Menu({
   onStart,
   onSettings,
   onHighscores,
-  playerName,
-  setPlayerName,
   highscore,
+  username,
 }) {
   return (
     <div style={styles.wrap}>
       <div style={styles.card}>
-        {/* Logo + Titel */}
+        {/* Kopf */}
         <div style={styles.header}>
           <div style={styles.logoGlow} />
           <div style={styles.logo}>WW</div>
@@ -33,18 +30,7 @@ export default function Menu({
           </div>
         </div>
 
-        {/* Eingabe Name */}
-        <div style={{ marginBottom: 8 }}>
-          <label style={styles.label}>Dein Name</label>
-          <input
-            placeholder="Spielername"
-            value={playerName}
-            onChange={(e) => setPlayerName(e.target.value)}
-            style={styles.input}
-          />
-        </div>
-
-        {/* Buttons */}
+        {/* CTAs */}
         <button className="btn" style={styles.btnPrimary} onClick={onStart}>
           🎮 Runde starten
         </button>
@@ -57,13 +43,13 @@ export default function Menu({
 
         {/* Info-Zeile */}
         <div style={styles.infoBox}>
-          <span style={styles.infoLabel}>Highscore lokal:</span>
-          <span style={styles.infoValue}>{highscore ?? 0}</span>
+          <span style={styles.infoLabel}>User:</span>
+          <b>{username}</b>
           <span style={styles.dot} />
-          <span style={styles.clock}>🕓</span>
-          <span style={styles.infoLabel}>
-            Rundenlänge: <b>20 s</b> (fix)
-          </span>
+          <span style={styles.infoLabel}>Highscore lokal:</span>
+          <b>{highscore ?? 0}</b>
+          <span style={styles.dot} />
+          <span style={styles.infoLabel}>Rundenlänge: 20 s (fix)</span>
         </div>
       </div>
 
@@ -100,14 +86,14 @@ const styles = {
     display: "flex",
     flexDirection: "column",
     alignItems: "flex-start",
-    gap: 8,
+    gap: 10,
   },
 
   header: {
     display: "flex",
     alignItems: "center",
     gap: 16,
-    marginBottom: 12,
+    marginBottom: 6,
     position: "relative",
   },
   logoGlow: {
@@ -147,22 +133,6 @@ const styles = {
     color: "#cbd5e1",
     fontSize: "clamp(14px, 3.2vw, 17px)",
   },
-  label: {
-    display: "block",
-    fontSize: 14,
-    color: "#cbd5e1",
-    marginBottom: 4,
-  },
-  input: {
-    width: "100%",
-    background: "#0b1220",
-    border: "2px solid #1f2937",
-    color: "#e5e7eb",
-    padding: "10px 12px",
-    borderRadius: 10,
-    outline: "none",
-    fontSize: 16,
-  },
 
   btnPrimary: {
     background: "#2563eb",
@@ -196,7 +166,7 @@ const styles = {
   },
 
   infoBox: {
-    marginTop: 10,
+    marginTop: 4,
     borderRadius: 12,
     border: "2px solid #1f2937",
     background: "#0b1220",
@@ -207,7 +177,6 @@ const styles = {
     flexWrap: "wrap",
   },
   infoLabel: { color: "#cbd5e1" },
-  infoValue: { fontWeight: 800, color: "#e5e7eb" },
   dot: {
     width: 6,
     height: 6,
@@ -215,7 +184,6 @@ const styles = {
     background: "#64748b",
     display: "inline-block",
   },
-  clock: { filter: "grayscale(.2)" },
 
   footer: {
     width: "100%",
