@@ -1,9 +1,9 @@
 import React, { useMemo, useState } from "react";
 import Menu from "./components/Menu";
 import Settings from "./components/Settings";
-import Highscores from "./components/Highscores"; // nutzt intern fetchTopByGame
+import Highscores from "./components/Highscores"; // Tabs pro Spiel, nutzt fetchTopByGame
 import useLocalStorage from "./hooks/useLocalStorage";
-import GameRouter from "./components/GameRouter"; // ruft addBestGameScore() beim Rundende
+import GameRouter from "./components/GameRouter"; // speichert Best-Score via addBestGameScore
 
 // Standard-Einstellungen
 const DEFAULT_SETTINGS = {
@@ -29,7 +29,7 @@ export default function App() {
   const [settings, setSettings] = useLocalStorage("SETTINGS", DEFAULT_SETTINGS);
 
   // Runden-/Spiel-State
-  const [score, setScore] = useState(0);          // Gesamtscore (lokal) über viele Runden
+  const [score, setScore] = useState(0);           // Gesamtscore (lokal) über viele Runden
   const [roundScore, setRoundScore] = useState(0); // Score in letzter Runde
   const [currentGame, setCurrentGame] = useState(null);
 
@@ -92,9 +92,9 @@ export default function App() {
       )}
 
       {screen === "HIGHSCORES" && (
-        <div className="card" style={{ ...styles.centerCard, maxWidth: 920 }}>
-          {/* Highscores.jsx benutzt intern fetchTopByGame(...) */}
-          <Highscores onBack={() => setScreen("MENU")} />
+        <div className="card" style={{ ...styles.centerCard, maxWidth: 980 }}>
+          {/* Highscores zeigt Tabs pro Spiel und markiert optional den aktuellen Spieler */}
+          <Highscores onBack={() => setScreen("MENU")} currentPlayer={playerName} />
         </div>
       )}
 
