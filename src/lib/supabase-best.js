@@ -1,12 +1,13 @@
 // src/lib/supabase-best.js
 import { supabase } from "./supabase";
 
-/** Top je Spieler (beste Punktzahl) gefiltert nach Spiel */
+/** Top je Spieler (beste Punktzahl) gefiltert nach Spiel, nur sichtbare */
 export async function fetchTopByGame(game, limit = 50) {
   const { data, error } = await supabase
     .from("scores")
-    .select("player_name, game_name, score, user_id, created_at")
-    .eq("game_name", game);
+    .select("id, player_name, game_name, score, user_id, created_at, visible")
+    .eq("game_name", game)
+    .eq("visible", true);  // << nur sichtbare
 
   if (error) return { data: null, error };
 
@@ -29,12 +30,13 @@ export async function fetchTopByGame(game, limit = 50) {
 export async function addBestGameScore(playerName, game, value, user) {
   const user_id = user?.id ?? null;
 
-  // aktuellen Bestwert (für diesen User & dieses Spiel) holen
+  // aktuellen Bestwert (für diesen User & dieses Spiel) holen – nur sichtbare zählen fürs Ranking
   const { data: cur, error: e1 } = await supabase
     .from("scores")
     .select("id, score")
     .eq("game_name", game)
     .eq("user_id", user_id)
+    .eq("visible", true)
     .order("score", { ascending: false })
     .limit(1);
 
@@ -44,13 +46,13 @@ export async function addBestGameScore(playerName, game, value, user) {
     return { data: { skipped: true }, error: null };
   }
 
-  // neuen Score eintragen (Spaltenname = score)
   const { data, error } = await supabase.from("scores").insert([
     {
       player_name: playerName || "Anonymous",
       game_name: game,
-      score: value,       // <— wichtig: score, nicht value
+      score: value,
       user_id,
+      visible: true,
     },
   ]);
 

@@ -4,9 +4,9 @@ import Settings from "./components/Settings";
 import Highscores from "./components/Highscores";
 import GameRouter from "./components/GameRouter";
 import Login from "./components/Login";
+import Admin from "./components/Admin";
 import { getAuthUser, signOutLocal } from "./lib/auth";
 
-// feste 20s
 const ROUND_SECONDS = 20;
 
 const DEFAULT_SETTINGS = {
@@ -18,38 +18,26 @@ const DEFAULT_SETTINGS = {
     BRAKE_TEST: true,
     CODE_TYPER: true,
   },
-  roundSeconds: ROUND_SECONDS, // wird nicht mehr geändert
+  roundSeconds: ROUND_SECONDS,
   soundEnabled: true,
 };
 
 export default function App() {
-  // Auth
   const [authUser, setAuthUser] = useState(getAuthUser());
+  const [screen, setScreen] = useState("MENU"); // MENU | SETTINGS | GAME | RESULT | HIGHSCORES | ADMIN
 
-  // Screens: MENU | SETTINGS | GAME | RESULT | HIGHSCORES
-  const [screen, setScreen] = useState("MENU");
-
-  // Lokale Highscore-Anzeige (der gesamte Score über viele Runden auf dem Gerät)
-  const [highscore, setHighscore] = useState(() => {
-    const raw = localStorage.getItem("HIGH_SCORE");
-    return raw ? Number(raw) : 0;
-  });
-
+  const [highscore, setHighscore] = useState(() => Number(localStorage.getItem("HIGH_SCORE") || 0));
   const [settings, setSettings] = useState(() => {
     const raw = localStorage.getItem("SETTINGS");
     return raw ? JSON.parse(raw) : DEFAULT_SETTINGS;
   });
 
-  // Runden-/Spiel-State
   const [score, setScore] = useState(0);
   const [roundScore, setRoundScore] = useState(0);
   const [currentGame, setCurrentGame] = useState(null);
 
   const enabledGames = useMemo(
-    () =>
-      Object.entries(settings.enabledGames)
-        .filter(([, v]) => v)
-        .map(([k]) => k),
+    () => Object.entries(settings.enabledGames).filter(([,v]) => v).map(([k]) => k),
     [settings.enabledGames]
   );
 
@@ -59,8 +47,8 @@ export default function App() {
   };
 
   const startRound = () => {
-    if (!authUser) return; // Safeguard
-    if (enabledGames.length === 0) {
+    if (!authUser) return;
+    if (!enabledGames.length) {
       alert("Keine Spiele aktiv. Bitte in den Einstellungen Spiele aktivieren.");
       setScreen("SETTINGS");
       return;
@@ -91,7 +79,6 @@ export default function App() {
     setAuthUser(null);
   };
 
-  // Login-Gate
   if (!authUser) return <Login onSuccess={(u) => setAuthUser(u)} />;
 
   return (
@@ -102,11 +89,17 @@ export default function App() {
             <div style={{ opacity: .9 }}>
               Eingeloggt als <b>{authUser.username}</b>
             </div>
-            <button className="btn" style={styles.btnGhostSm} onClick={logout}>Abmelden</button>
+            <div style={{ display: "flex", gap: 8 }}>
+              {authUser.username === "Alex" && (
+                <button className="btn" style={styles.btnGhostSm} onClick={() => setScreen("ADMIN")}>
+                  Admin
+                </button>
+              )}
+              <button className="btn" style={styles.btnGhostSm} onClick={logout}>Abmelden</button>
+            </div>
           </div>
 
           <Menu
-            // Spielername-Eingabe ist entfernt – Menü zeigt nur Buttons/Infos
             onStart={startRound}
             onSettings={() => setScreen("SETTINGS")}
             onHighscores={() => setScreen("HIGHSCORES")}
@@ -130,12 +123,16 @@ export default function App() {
         </div>
       )}
 
+      {screen === "ADMIN" && authUser.username === "Alex" && (
+        <Admin onBack={() => setScreen("MENU")} username={authUser.username} />
+      )}
+
       {screen === "GAME" && currentGame && (
         <GameRouter
           game={currentGame}
-          roundSeconds={ROUND_SECONDS}     // fix 20s
+          roundSeconds={ROUND_SECONDS}
           onRoundEnd={onRoundEnd}
-          user={authUser}                  // wichtig für Online-Score
+          user={authUser}
         />
       )}
 
@@ -145,15 +142,9 @@ export default function App() {
           <div style={{ marginTop: 6 }}>Runde: {roundScore} Punkte</div>
           <div>Gesamt: {score} Punkte</div>
           <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap", justifyContent: "center" }}>
-            <button className="btn" style={styles.btnPrimary} onClick={startRound}>
-              Nächste Runde
-            </button>
-            <button className="btn" style={styles.btnSecondary} onClick={() => setScreen("MENU")}>
-              Menü
-            </button>
-            <button className="btn" style={styles.btnGhost} onClick={() => setScreen("HIGHSCORES")}>
-              🏆 Highscores
-            </button>
+            <button className="btn" style={styles.btnPrimary} onClick={startRound}>Nächste Runde</button>
+            <button className="btn" style={styles.btnSecondary} onClick={() => setScreen("MENU")}>Menü</button>
+            <button className="btn" style={styles.btnGhost} onClick={() => setScreen("HIGHSCORES")}>🏆 Highscores</button>
           </div>
         </div>
       )}
@@ -171,74 +162,28 @@ const styles = {
     justifyContent: "center",
     padding: 16,
     fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, sans-serif",
-    backgroundImage:
-      "radial-gradient(1200px 600px at 50% -10%, rgba(37,99,235,.10), transparent 60%)",
+    backgroundImage: "radial-gradient(1200px 600px at 50% -10%, rgba(37,99,235,.10), transparent 60%)",
   },
   card: {
     width: "100%",
-    maxWidth: 720,
+    maxWidth: 1024,
     background: "#111827",
     border: "2px solid #1f2937",
     borderRadius: 18,
     padding: 0,
   },
   topBar: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    padding: "10px 12px",
-    borderBottom: "2px solid #1f2937",
-    background: "#0b1220",
-    borderTopLeftRadius: 18,
-    borderTopRightRadius: 18,
+    display: "flex", justifyContent: "space-between", alignItems: "center",
+    padding: "10px 12px", borderBottom: "2px solid #1f2937", background: "#0b1220",
+    borderTopLeftRadius: 18, borderTopRightRadius: 18,
   },
   centerCard: {
-    width: "100%",
-    maxWidth: 560,
-    background: "#111827",
-    border: "2px solid #1f2937",
-    borderRadius: 18,
-    padding: 20,
-    display: "grid",
-    gap: 10,
-    justifyItems: "center",
-    textAlign: "center",
+    width: "100%", maxWidth: 560, background: "#111827",
+    border: "2px solid #1f2937", borderRadius: 18, padding: 20,
+    display: "grid", gap: 10, justifyItems: "center", textAlign: "center",
   },
-  btnPrimary: {
-    background: "#2563eb",
-    borderRadius: 12,
-    border: "none",
-    color: "white",
-    padding: "12px 16px",
-    cursor: "pointer",
-    fontWeight: 700,
-  },
-  btnSecondary: {
-    background: "#334155",
-    borderRadius: 12,
-    border: "none",
-    color: "#e5e7eb",
-    padding: "12px 16px",
-    cursor: "pointer",
-    fontWeight: 700,
-  },
-  btnGhost: {
-    background: "#0b1220",
-    borderRadius: 12,
-    border: "2px solid #1f2937",
-    color: "#e5e7eb",
-    padding: "12px 16px",
-    cursor: "pointer",
-    fontWeight: 700,
-  },
-  btnGhostSm: {
-    background: "transparent",
-    borderRadius: 10,
-    border: "2px solid #334155",
-    color: "#e5e7eb",
-    padding: "6px 10px",
-    cursor: "pointer",
-    fontWeight: 700,
-    fontSize: 13,
-  },
+  btnPrimary: { background: "#2563eb", borderRadius: 12, border: "none", color: "white", padding: "12px 16px", cursor: "pointer", fontWeight: 700 },
+  btnSecondary: { background: "#334155", borderRadius: 12, border: "none", color: "#e5e7eb", padding: "12px 16px", cursor: "pointer", fontWeight: 700 },
+  btnGhost: { background: "#0b1220", borderRadius: 12, border: "2px solid #1f2937", color: "#e5e7eb", padding: "12px 16px", cursor: "pointer", fontWeight: 700 },
+  btnGhostSm: { background: "transparent", borderRadius: 10, border: "2px solid #334155", color: "#e5e7eb", padding: "6px 10px", cursor: "pointer", fontWeight: 700, fontSize: 13 },
 };
