@@ -1,3 +1,4 @@
+// src/App.jsx
 import React, { useMemo, useState } from "react";
 import Menu from "./components/Menu";
 import Settings from "./components/Settings";
@@ -5,7 +6,9 @@ import Highscores from "./components/Highscores";
 import useLocalStorage from "./hooks/useLocalStorage";
 import GameRouter from "./components/GameRouter";
 
-// Standard-Einstellungen (Rundenlänge entfernt)
+/**
+ * Einstellungen (ohne Rundenlänge – ist fix 20s)
+ */
 const DEFAULT_SETTINGS = {
   enabledGames: {
     TAP_FRENZY: true,
@@ -19,15 +22,20 @@ const DEFAULT_SETTINGS = {
 };
 
 export default function App() {
-  const [screen, setScreen] = useState("MENU"); // MENU | SETTINGS | GAME | RESULT | HIGHSCORES
+  // Screens: MENU | SETTINGS | GAME | RESULT | HIGHSCORES
+  const [screen, setScreen] = useState("MENU");
+
+  // Persistente Werte
   const [playerName, setPlayerName] = useLocalStorage("PLAYER_NAME", "");
   const [highscore, setHighscore] = useLocalStorage("HIGH_SCORE", 0);
   const [settings, setSettings] = useLocalStorage("SETTINGS", DEFAULT_SETTINGS);
 
-  const [score, setScore] = useState(0);
-  const [roundScore, setRoundScore] = useState(0);
+  // Runden-/Spiel-State
+  const [score, setScore] = useState(0);           // Gesamtscore (lokal)
+  const [roundScore, setRoundScore] = useState(0); // Score der letzten Runde
   const [currentGame, setCurrentGame] = useState(null);
 
+  // Liste aktivierter Spiele
   const enabledGames = useMemo(
     () =>
       Object.entries(settings.enabledGames)
@@ -36,6 +44,7 @@ export default function App() {
     [settings.enabledGames]
   );
 
+  // Runde starten -> zufälliges aktives Spiel
   const startRound = () => {
     if (!playerName.trim()) {
       alert("Bitte gib einen Spielernamen ein.");
@@ -52,6 +61,7 @@ export default function App() {
     setScreen("GAME");
   };
 
+  // Callback vom GameRouter, wenn Runde endet
   const onRoundEnd = (earned) => {
     setRoundScore(earned);
     const total = score + earned;
@@ -62,6 +72,7 @@ export default function App() {
 
   return (
     <div style={styles.app}>
+      {/* Menü */}
       {screen === "MENU" && (
         <div className="card" style={styles.card}>
           <Menu
@@ -75,29 +86,34 @@ export default function App() {
         </div>
       )}
 
+      {/* Einstellungen (mit Untermenü & Start oben rechts) */}
       {screen === "SETTINGS" && (
         <Settings
           settings={settings}
           setSettings={setSettings}
           onBack={() => setScreen("MENU")}
+          onQuickStart={startRound}
         />
       )}
 
+      {/* Highscores (pro Spiel, bester Score je Spieler, Zeitfilter clientseitig) */}
       {screen === "HIGHSCORES" && (
-        <div className="card" style={{ ...styles.centerCard, maxWidth: 920 }}>
-          <Highscores onBack={() => setScreen("MENU")} />
+        <div className="card" style={{ ...styles.centerCard, maxWidth: 980 }}>
+          <Highscores onBack={() => setScreen("MENU")} currentPlayer={playerName} />
         </div>
       )}
 
+      {/* Spiel-Router (20s fix) */}
       {screen === "GAME" && currentGame && (
         <GameRouter
           game={currentGame}
-          roundSeconds={20} // <-- Fix: Rundenlänge auf 20 Sekunden
+          roundSeconds={20}       // <-- fix auf 20 Sekunden
           onRoundEnd={onRoundEnd}
-          playerName={playerName}
+          playerName={playerName} // für Online-Score (supabase)
         />
       )}
 
+      {/* Ergebnis-Screen: Buttons unten in Grid */}
       {screen === "RESULT" && (
         <div className="card" style={styles.resultCard}>
           <div style={styles.resultTop}>
@@ -111,13 +127,25 @@ export default function App() {
           </div>
 
           <div style={styles.resultFooter}>
-            <button className="btn" style={{ ...styles.btnPrimary, flex: 1 }} onClick={startRound}>
+            <button
+              className="btn"
+              style={{ ...styles.btnPrimary, flex: 1 }}
+              onClick={startRound}
+            >
               Nächste Runde
             </button>
-            <button className="btn" style={{ ...styles.btnSecondary, flex: 1 }} onClick={() => setScreen("MENU")}>
+            <button
+              className="btn"
+              style={{ ...styles.btnSecondary, flex: 1 }}
+              onClick={() => setScreen("MENU")}
+            >
               Menü
             </button>
-            <button className="btn" style={{ ...styles.btnGhost, flex: 1 }} onClick={() => setScreen("HIGHSCORES")}>
+            <button
+              className="btn"
+              style={{ ...styles.btnGhost, flex: 1 }}
+              onClick={() => setScreen("HIGHSCORES")}
+            >
               🏆 Highscores
             </button>
           </div>
@@ -127,6 +155,7 @@ export default function App() {
   );
 }
 
+/* ================= Styles ================= */
 const styles = {
   app: {
     minHeight: "100vh",
@@ -157,7 +186,9 @@ const styles = {
     flexDirection: "column",
     alignItems: "center",
     textAlign: "center",
+    gap: 10,
   },
+  /* Ergebnis-Layout: Buttons unten, Safe-Area */
   resultCard: {
     width: "100%",
     maxWidth: 560,
@@ -178,6 +209,7 @@ const styles = {
     alignItems: "center",
     textAlign: "center",
     gap: 4,
+    marginTop: 8,
   },
   resultFooter: {
     display: "grid",

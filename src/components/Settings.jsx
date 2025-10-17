@@ -1,39 +1,27 @@
-// src/components/Settings.jsx
 import React, { useMemo, useState } from "react";
 
-/**
- * Props:
- * - settings: { enabledGames: Record<string, boolean>, soundEnabled: boolean }
- * - setSettings: (next) => void
- * - onBack: () => void
- * - onQuickStart?: () => void  // optional: zeigt "Start"-Button oben rechts
- */
 export default function Settings({ settings, setSettings, onBack, onQuickStart }) {
-  const [view, setView] = useState("root"); // "root" | "games"
+  const [view, setView] = useState("root");
 
   return (
-    <div style={styles.wrap}>
+    <div style={styles.wrapper}>
       <div style={styles.card}>
-        {/* Header */}
         <div style={styles.header}>
           <h2 style={styles.title}>Einstellungen</h2>
           <div style={{ display: "flex", gap: 8 }}>
-            {onQuickStart ? (
-              <button style={styles.btnPrimary} onClick={onQuickStart}>Start</button>
-            ) : (
-              <button style={styles.btnSecondary} onClick={onBack}>Zurück</button>
-            )}
+            <button
+              style={onQuickStart ? styles.btnPrimary : styles.btnSecondary}
+              onClick={onQuickStart || onBack}
+            >
+              {onQuickStart ? "Start" : "Zurück"}
+            </button>
           </div>
         </div>
 
-        {/* Root-Ansicht */}
+        {/* Hauptmenü */}
         {view === "root" && (
           <div style={styles.section}>
-            <ListButton
-              label="Spiele auswählen"
-              onClick={() => setView("games")}
-            />
-
+            <ListButton label="Spiele auswählen" onClick={() => setView("games")} />
             <Row>
               <span style={styles.rowLabel}>Sound</span>
               <Switch
@@ -41,18 +29,15 @@ export default function Settings({ settings, setSettings, onBack, onQuickStart }
                 onChange={(v) => setSettings({ ...settings, soundEnabled: v })}
               />
             </Row>
+            <InfoBox>🕒 <b>Rundenlänge:</b> 20 Sekunden (fix)</InfoBox>
 
-            <InfoBox>
-              🕒 <b>Rundenlänge:</b> 20 Sekunden (fix)
-            </InfoBox>
-
-            <div style={{ marginTop: 16, display: "flex", justifyContent: "center" }}>
+            <div style={styles.centerBtn}>
               <button style={styles.btnGhost} onClick={onBack}>Fertig</button>
             </div>
           </div>
         )}
 
-        {/* Untermenü: Spiele */}
+        {/* Spiele-Auswahl */}
         {view === "games" && (
           <GamesView
             values={settings.enabledGames}
@@ -65,7 +50,6 @@ export default function Settings({ settings, setSettings, onBack, onQuickStart }
   );
 }
 
-/* ---------- Unteransicht: Spiele ---------- */
 function GamesView({ values, onChange, onBack }) {
   const entries = useMemo(() => [
     ["TAP_FRENZY", "Ölwechsel 3000 (Tap)"],
@@ -80,7 +64,11 @@ function GamesView({ values, onChange, onBack }) {
 
   return (
     <div style={styles.section}>
-      <SubHeader title="Spiele auswählen" onBack={onBack} />
+      <div style={styles.subHeader}>
+        <button style={styles.backBtn} onClick={onBack}>‹ Zurück</button>
+        <h3 style={styles.subTitle}>Spiele auswählen</h3>
+        <div style={{ width: 88 }} />
+      </div>
       <div style={{ display: "grid", gap: 8 }}>
         {entries.map(([k, label]) => (
           <Row key={k}>
@@ -89,32 +77,16 @@ function GamesView({ values, onChange, onBack }) {
           </Row>
         ))}
       </div>
-      <div style={{ marginTop: 16, display: "flex", justifyContent: "center" }}>
-        <button style={styles.btnGhost} onClick={onBack}>Zurück</button>
-      </div>
     </div>
   );
 }
 
-/* ---------- Bausteine ---------- */
-function SubHeader({ title, onBack }) {
-  return (
-    <div style={styles.subHeader}>
-      <button style={styles.backBtn} onClick={onBack}>‹ Zurück</button>
-      <h3 style={styles.subTitle}>{title}</h3>
-      <div style={{ width: 88 }} />
-    </div>
-  );
-}
-
-function ListButton({ label, rightText, onClick }) {
+/* ========== Bausteine ========== */
+function ListButton({ label, onClick }) {
   return (
     <button onClick={onClick} style={styles.listBtn}>
       <span>{label}</span>
-      <span style={{ display: "flex", alignItems: "center", gap: 10, color: "#94a3b8" }}>
-        {rightText && <span>{rightText}</span>}
-        <span style={styles.chev}>›</span>
-      </span>
+      <span style={styles.chev}>›</span>
     </button>
   );
 }
@@ -155,41 +127,38 @@ function Switch({ checked, onChange }) {
 }
 
 function InfoBox({ children }) {
-  return (
-    <div style={styles.infoBox}>
-      {children}
-    </div>
-  );
+  return <div style={styles.infoBox}>{children}</div>;
 }
 
-/* ---------- Styles ---------- */
+/* ========== Styles ========== */
 const styles = {
-  wrap: {
-    width: "100%",
+  wrapper: {
+    minHeight: "100vh",
     display: "flex",
+    alignItems: "center",
     justifyContent: "center",
+    background: "#0f172a",
     padding: 16,
   },
   card: {
     width: "100%",
-    maxWidth: 560,
+    maxWidth: 400,
     background: "#111827",
     border: "2px solid #1f2937",
     borderRadius: 18,
-    padding: 14,
+    padding: 16,
     color: "#e5e7eb",
+    display: "flex",
+    flexDirection: "column",
+    gap: 12,
   },
-
   header: {
-    display: "grid",
-    gridTemplateColumns: "1fr auto",
+    display: "flex",
+    justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 10,
   },
-  title: { margin: 0, fontSize: 24 },
-
+  title: { margin: 0, fontSize: 24, fontWeight: 800 },
   section: { display: "grid", gap: 10 },
-
   subHeader: {
     display: "grid",
     gridTemplateColumns: "88px 1fr 88px",
@@ -198,7 +167,6 @@ const styles = {
   },
   subTitle: { textAlign: "center", margin: 0, fontSize: 18, fontWeight: 800 },
   backBtn: {
-    justifySelf: "start",
     background: "#334155",
     borderRadius: 10,
     border: "none",
@@ -207,7 +175,6 @@ const styles = {
     cursor: "pointer",
     fontWeight: 700,
   },
-
   listBtn: {
     display: "flex",
     justifyContent: "space-between",
@@ -222,7 +189,6 @@ const styles = {
     fontWeight: 700,
   },
   chev: { fontSize: 18, opacity: 0.9 },
-
   row: {
     display: "grid",
     gridTemplateColumns: "1fr auto",
@@ -234,9 +200,7 @@ const styles = {
     background: "#0b1220",
   },
   rowLabel: { fontWeight: 600 },
-
   infoBox: {
-    marginTop: 4,
     background: "#0b1220",
     border: "2px solid #1f2937",
     borderRadius: 12,
@@ -244,7 +208,7 @@ const styles = {
     color: "#cbd5e1",
     fontSize: 14,
   },
-
+  centerBtn: { marginTop: 10, textAlign: "center" },
   btnPrimary: {
     background: "#2563eb",
     borderRadius: 12,

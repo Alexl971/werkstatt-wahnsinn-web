@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useRef, useState } from "react";
 
 export default function Menu({
   onStart,
@@ -8,88 +8,200 @@ export default function Menu({
   setPlayerName,
   highscore,
 }) {
+  const inputRef = useRef(null);
+  const [showInstallHint, setShowInstallHint] = useState(false);
+  const [deferredPrompt, setDeferredPrompt] = useState(null);
+
+  useEffect(() => {
+    // Fokus auf Namensfeld
+    const t = setTimeout(() => inputRef.current?.focus?.(), 150);
+    return () => clearTimeout(t);
+  }, []);
+
+  // PWA-Install-Hinweis-Logik
+  useEffect(() => {
+    const installed = window.matchMedia("(display-mode: standalone)").matches;
+    if (installed) return; // App ist schon installiert
+
+    // Prüfen, ob schon einmal gezeigt
+    const seen = localStorage.getItem("PWA_HINT_SEEN");
+    if (seen) return;
+
+    const handler = (e) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      setShowInstallHint(true);
+    };
+    window.addEventListener("beforeinstallprompt", handler);
+
+    // Falls Safari / iOS, kein event -> trotzdem Hinweis anzeigen
+    if (/iphone|ipad|ipod/i.test(navigator.userAgent)) {
+      setTimeout(() => setShowInstallHint(true), 2000);
+    }
+
+    return () => window.removeEventListener("beforeinstallprompt", handler);
+  }, []);
+
+  const handleInstall = async () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === "accepted") {
+        setShowInstallHint(false);
+        localStorage.setItem("PWA_HINT_SEEN", "1");
+      }
+    } else {
+      // iOS Safari
+      alert(
+        "📲 Tippe auf das Teilen-Symbol (Quadrat mit Pfeil) und wähle 'Zum Home-Bildschirm hinzufügen'."
+      );
+      setShowInstallHint(false);
+      localStorage.setItem("PWA_HINT_SEEN", "1");
+    }
+  };
+
+  const canStart = playerName.trim().length > 0;
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter" && canStart) onStart();
+  };
+
   return (
-    <div style={styles.page}>
-      <div style={styles.heroCard}>
-        {/* Icon-Badge */}
-        <div style={styles.iconBadge}>
-          <span style={{ fontWeight: 900 }}>WW</span>
+    <div style={styles.wrap}>
+      <div style={styles.card}>
+        <div style={styles.logoBadge}>
+          <div style={styles.logoCircle}>
+            <span style={{ fontWeight: 900, letterSpacing: 1 }}>WW</span>
+          </div>
         </div>
 
-        {/* Titel & Claim */}
         <h1 style={styles.title}>Werkstatt-Wahnsinn</h1>
         <p style={styles.subtitle}>Mini-Games · Reaktion · Quiz · schwarzer Humor</p>
 
-        {/* Name + Buttons */}
-        <div style={{ width: "100%", maxWidth: 420, marginTop: 8 }}>
+        <div style={{ width: "100%", maxWidth: 420 }}>
+          <label htmlFor="playerName" style={styles.label}>
+            Dein Name
+          </label>
           <input
-            style={styles.input}
-            placeholder="Spielername"
+            id="playerName"
+            ref={inputRef}
             value={playerName}
             onChange={(e) => setPlayerName(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="z. B. Alex"
+            autoComplete="name"
+            style={styles.input}
           />
+        </div>
 
-          <div style={styles.buttonRow}>
-            <button style={styles.primary} onClick={onStart}>🎮 Runde starten</button>
-            <button style={styles.secondary} onClick={onSettings}>⚙️ Einstellungen</button>
-            <button style={styles.tertiary} onClick={onHighscores}>🏆 Highscores</button>
-          </div>
+        <div style={styles.actions}>
+          <button
+            className="btn"
+            onClick={onStart}
+            disabled={!canStart}
+            style={{
+              ...styles.btnPrimary,
+              ...(canStart ? {} : styles.btnDisabled),
+            }}
+          >
+            🎮 Runde starten
+          </button>
+          <button className="btn" onClick={onSettings} style={styles.btnSecondary}>
+            ⚙️ Einstellungen
+          </button>
+          <button className="btn" onClick={onHighscores} style={styles.btnGhost}>
+            🏆 Highscores
+          </button>
+        </div>
 
-          {/* Info-Leiste */}
-          <div style={styles.infoBar}>
-            <div><span style={styles.infoLabel}>Highscore lokal:</span> {highscore}</div>
-            <div style={{ opacity: .75 }}>Dark-Mode aktiv</div>
+        <div style={styles.infoBar}>
+          <div>
+            <span style={styles.infoLabel}>Highscore lokal:</span>{" "}
+            <b>{highscore ?? 0}</b>
           </div>
+          <div style={styles.dot} />
+          <div>🕒 Rundenlänge: <b>20 s</b> (fix)</div>
         </div>
       </div>
 
-      {/* Footer */}
+      {showInstallHint && (
+        <div style={styles.installHint}>
+          <p style={{ margin: 0 }}>
+            📱 <b>Zum Home-Bildschirm hinzufügen</b>
+          </p>
+          <button style={styles.installBtn} onClick={handleInstall}>
+            Jetzt hinzufügen
+          </button>
+          <button
+            style={styles.closeBtn}
+            onClick={() => {
+              setShowInstallHint(false);
+              localStorage.setItem("PWA_HINT_SEEN", "1");
+            }}
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
       <div style={styles.footer}>
-        <span>⚙️ Vite + React · PWA</span>
-        <span>© {new Date().getFullYear()} Werkstatt-Wahnsinn</span>
+        <span style={{ opacity: 0.8 }}>Vite + React · PWA</span>
+        <span style={{ opacity: 0.5 }}>© {new Date().getFullYear()} Werkstatt-Wahnsinn</span>
       </div>
     </div>
   );
 }
 
+/* ========== Styles ========== */
 const styles = {
-  page: {
-    minHeight: "100vh",
+  wrap: {
+    minHeight: "100%",
+    display: "grid",
+    gridTemplateRows: "1fr auto",
+    alignItems: "center",
+    justifyItems: "center",
+    gap: 18,
     padding: 16,
     background:
-      "radial-gradient(1200px 500px at 20% 0%, rgba(37,99,235,.25), transparent 60%), radial-gradient(1200px 500px at 100% 100%, rgba(34,197,94,.18), transparent 60%), #0f172a",
-    color: "#e5e7eb",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
+      "radial-gradient(1200px 600px at 50% -10%, rgba(37,99,235,0.12), transparent 60%)",
   },
-  heroCard: {
+  card: {
     width: "100%",
-    maxWidth: 720,
-    background: "rgba(17,24,39,.85)",
-    backdropFilter: "blur(6px)",
+    maxWidth: 560,
+    background: "#111827",
     border: "2px solid #1f2937",
-    borderRadius: 20,
-    padding: 24,
-    textAlign: "center",
-    boxShadow: "0 20px 60px rgba(0,0,0,.35)",
+    borderRadius: 22,
+    padding: 20,
+    display: "grid",
+    justifyItems: "center",
+    gap: 14,
+    color: "#e5e7eb",
+    boxShadow: "0 10px 30px rgba(0,0,0,.25)",
   },
-  iconBadge: {
-    width: 72, height: 72,
-    margin: "0 auto 8px",
-    borderRadius: 16,
-    background:
-      "conic-gradient(from 180deg at 50% 50%, #2563eb, #22c55e, #2563eb)",
+  logoBadge: { marginTop: 8 },
+  logoCircle: {
+    width: 72,
+    height: 72,
+    borderRadius: 18,
     display: "grid",
     placeItems: "center",
-    color: "#0f172a",
+    background:
+      "linear-gradient(150deg, #34d399 0%, #22d3ee 55%, #3b82f6 100%)",
+    color: "#0b1220",
     fontSize: 22,
+    border: "2px solid #1f2937",
+    boxShadow: "0 6px 20px rgba(59,130,246,.25)",
   },
-  title: { margin: "6px 0 2px", fontSize: 34, fontWeight: 900, letterSpacing: .2 },
-  subtitle: { margin: 0, opacity: .85 },
+  title: {
+    margin: 0,
+    marginTop: 4,
+    fontSize: 34,
+    textAlign: "center",
+    fontWeight: 900,
+  },
+  subtitle: { margin: 0, color: "#cbd5e1", textAlign: "center" },
+  label: { fontSize: 13, color: "#9ca3af", marginBottom: 6, display: "block" },
   input: {
     width: "100%",
-    marginTop: 14,
     background: "#0b1220",
     border: "2px solid #1f2937",
     color: "#e5e7eb",
@@ -98,62 +210,103 @@ const styles = {
     outline: "none",
     fontSize: 16,
   },
-  buttonRow: {
-    display: "flex", gap: 10, marginTop: 12, flexWrap: "wrap",
-    justifyContent: "center",
+  actions: {
+    width: "100%",
+    maxWidth: 420,
+    display: "grid",
+    gap: 10,
+    marginTop: 6,
   },
-  primary: {
+  btnPrimary: {
+    background: "#2563eb",
+    borderRadius: 12,
+    border: "none",
+    color: "white",
+    padding: "14px 16px",
+    cursor: "pointer",
+    fontWeight: 800,
+    fontSize: 16,
+  },
+  btnSecondary: {
+    background: "#334155",
+    borderRadius: 12,
+    border: "none",
+    color: "#e5e7eb",
+    padding: "12px 16px",
+    cursor: "pointer",
+    fontWeight: 800,
+  },
+  btnGhost: {
+    background: "#0b1220",
+    borderRadius: 12,
+    border: "2px solid #1f2937",
+    color: "#e5e7eb",
+    padding: "12px 16px",
+    cursor: "pointer",
+    fontWeight: 800,
+  },
+  btnDisabled: {
+    opacity: 0.55,
+    cursor: "not-allowed",
+    filter: "grayscale(25%)",
+  },
+  infoBar: {
+    width: "100%",
+    maxWidth: 420,
+    marginTop: 6,
+    padding: "10px 12px",
+    borderRadius: 14,
+    border: "2px solid #1f2937",
+    background: "#0b1220",
+    display: "flex",
+    gap: 10,
+    alignItems: "center",
+    justifyContent: "center",
+    flexWrap: "wrap",
+    color: "#cbd5e1",
+  },
+  infoLabel: { opacity: 0.85, marginRight: 4 },
+  dot: { width: 6, height: 6, borderRadius: 999, background: "#334155" },
+  footer: {
+    width: "100%",
+    maxWidth: 560,
+    display: "flex",
+    justifyContent: "space-between",
+    color: "#9ca3af",
+    fontSize: 12,
+    padding: "0 6px",
+  },
+  installHint: {
+    position: "fixed",
+    bottom: 20,
+    left: "50%",
+    transform: "translateX(-50%)",
+    background: "rgba(17, 24, 39, 0.95)",
+    border: "2px solid #1f2937",
+    borderRadius: 18,
+    padding: "14px 18px",
+    display: "flex",
+    alignItems: "center",
+    gap: 12,
+    color: "#e5e7eb",
+    boxShadow: "0 6px 20px rgba(0,0,0,.35)",
+    backdropFilter: "blur(8px)",
+    zIndex: 100,
+  },
+  installBtn: {
     background: "#2563eb",
     color: "white",
     border: "none",
     borderRadius: 12,
-    padding: "12px 18px",
+    padding: "8px 12px",
+    fontWeight: 700,
     cursor: "pointer",
-    fontWeight: 800,
   },
-  secondary: {
-    background: "#334155",
-    color: "#e5e7eb",
+  closeBtn: {
+    background: "transparent",
     border: "none",
-    borderRadius: 12,
-    padding: "12px 18px",
+    color: "#9ca3af",
+    fontSize: 18,
     cursor: "pointer",
-    fontWeight: 800,
-  },
-  tertiary: {
-    background: "#0b1220",
-    color: "#e5e7eb",
-    border: "2px solid #1f2937",
-    borderRadius: 12,
-    padding: "12px 18px",
-    cursor: "pointer",
-    fontWeight: 800,
-  },
-  infoBar: {
-    marginTop: 12,
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    gap: 12,
-    background: "#0b1220",
-    border: "2px solid #1f2937",
-    borderRadius: 12,
-    padding: "10px 12px",
-    fontSize: 14,
-  },
-  infoLabel: { opacity: .75, marginRight: 6 },
-  footer: {
-    position: "fixed",
-    bottom: 10,
-    left: 0, right: 0,
-    margin: "0 auto",
-    width: "100%",
-    maxWidth: 720,
-    display: "flex",
-    justifyContent: "space-between",
-    padding: "0 12px",
-    opacity: .6,
-    fontSize: 12,
-    pointerEvents: "none",
   },
 };
