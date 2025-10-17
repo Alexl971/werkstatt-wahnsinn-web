@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { fetchTopByGame } from "../lib/supabase"; // ← ggf. auf "../lib/supabase-best" ändern
+import React, { useEffect, useState } from "react";
+import { fetchTopByGame } from "../lib/supabase"; // ggf. auf "../lib/supabase-best" ändern
 
 const GAME_LABELS = {
   QUIZ: "Werkstatt-Quiz",
@@ -17,23 +17,14 @@ export default function Highscores({ onBack }) {
   const [rows, setRows] = useState([]);
   const [state, setState] = useState("loading"); // loading | ok | error
 
-  const title = GAME_LABELS[active] ?? active;
-
   const load = async (game) => {
     setState("loading");
     const { data, error } = await fetchTopByGame(game, 50);
-    if (error) {
-      setRows([]);
-      setState("error");
-    } else {
-      setRows(data || []);
-      setState("ok");
-    }
+    if (error) { setRows([]); setState("error"); }
+    else { setRows(data || []); setState("ok"); }
   };
 
-  useEffect(() => {
-    load(active);
-  }, [active]);
+  useEffect(() => { load(active); }, [active]);
 
   return (
     <div style={styles.wrap}>
@@ -48,16 +39,16 @@ export default function Highscores({ onBack }) {
       {/* Tabs */}
       <div style={styles.tabs}>
         {GAMES.map((g) => {
-          const activeTab = g === active;
+          const isActive = g === active;
           return (
             <button
               key={g}
               onClick={() => setActive(g)}
               style={{
                 ...styles.tab,
-                background: activeTab ? "#2563eb" : "#0b1220",
-                borderColor: activeTab ? "#2563eb" : "#1f2937",
-                color: activeTab ? "#fff" : "#e5e7eb",
+                background: isActive ? "#2563eb" : "#0b1220",
+                borderColor: isActive ? "#2563eb" : "#1f2937",
+                color: isActive ? "#fff" : "#e5e7eb",
               }}
             >
               {GAME_LABELS[g]}
@@ -66,23 +57,18 @@ export default function Highscores({ onBack }) {
         })}
       </div>
 
-      <div className="card" style={styles.card}>
+      {/* Liste */}
+      <div style={styles.card}>
         <div style={styles.titleRow}>
-          <div style={{ fontWeight: 800 }}>{title}</div>
+          <div style={{ fontWeight: 800 }}>{GAME_LABELS[active]}</div>
           <div style={{ opacity: 0.8, fontSize: 13 }}>bester Score je Spieler</div>
         </div>
 
-        {state === "loading" && (
-          <div style={styles.muted}>Lade …</div>
-        )}
-        {state === "error" && (
-          <div style={styles.muted}>
-            Konnte Highscores nicht laden. Prüfe ENV/Policies/Tabelle.
-          </div>
-        )}
+        {state === "loading" && <div style={styles.muted}>Lade …</div>}
+        {state === "error" && <div style={styles.muted}>Konnte Highscores nicht laden.</div>}
 
         {state === "ok" && (
-          rows.length > 0 ? (
+          rows.length ? (
             <ol style={styles.list}>
               {rows.map((r, i) => (
                 <li key={i} style={styles.row}>
@@ -102,81 +88,18 @@ export default function Highscores({ onBack }) {
 }
 
 const styles = {
-  wrap: {
-    width: "100%",
-    maxWidth: 900,
-    color: "#e5e7eb",
-  },
-  header: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 10,
-  },
-  tabs: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-    gap: 8,
-    marginBottom: 12,
-  },
-  tab: {
-    padding: "10px 12px",
-    borderRadius: 12,
-    border: "2px solid #1f2937",
-    background: "#0b1220",
-    cursor: "pointer",
-    fontWeight: 700,
-    textAlign: "center",
-  },
-  card: {
-    background: "#111827",
-    border: "2px solid #1f2937",
-    borderRadius: 18,
-    padding: 14,
-  },
-  titleRow: {
-    display: "flex",
-    justifyContent: "space-between",
-    marginBottom: 8,
-  },
-  list: {
-    listStyle: "none",
-    padding: 0,
-    margin: 0,
-    display: "flex",
-    flexDirection: "column",
-    gap: 6,
-  },
-  row: {
-    display: "grid",
-    gridTemplateColumns: "44px 1fr 80px",
-    alignItems: "center",
-    gap: 8,
-    background: "#0b1220",
-    border: "2px solid #1f2937",
-    borderRadius: 12,
-    padding: "8px 10px",
-  },
+  wrap: { width: "100%", maxWidth: 900, color: "#e5e7eb" },
+  header: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 },
+  tabs: { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 8, marginBottom: 12 },
+  tab: { padding: "10px 12px", borderRadius: 12, border: "2px solid #1f2937", background: "#0b1220", cursor: "pointer", fontWeight: 700, textAlign: "center" },
+  card: { background: "#111827", border: "2px solid #1f2937", borderRadius: 18, padding: 14 },
+  titleRow: { display: "flex", justifyContent: "space-between", marginBottom: 8 },
+  list: { listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 6 },
+  row: { display: "grid", gridTemplateColumns: "44px 1fr 80px", alignItems: "center", gap: 8, background: "#0b1220", border: "2px solid #1f2937", borderRadius: 12, padding: "8px 10px" },
   rank: { fontWeight: 900, textAlign: "right", color: "#93c5fd" },
   name: { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
   points: { textAlign: "right", fontWeight: 800, color: "#38bdf8" },
   muted: { color: "#cbd5e1", opacity: 0.8, textAlign: "center", padding: 12 },
-  btn: {
-    background: "#2563eb",
-    borderRadius: 12,
-    border: "none",
-    color: "white",
-    padding: "8px 12px",
-    cursor: "pointer",
-    fontWeight: 700,
-  },
-  btnSecondary: {
-    background: "#334155",
-    borderRadius: 12,
-    border: "none",
-    color: "#e5e7eb",
-    padding: "8px 12px",
-    cursor: "pointer",
-    fontWeight: 700,
-  },
+  btn: { background: "#2563eb", borderRadius: 12, border: "none", color: "white", padding: "8px 12px", cursor: "pointer", fontWeight: 700 },
+  btnSecondary: { background: "#334155", borderRadius: 12, border: "none", color: "#e5e7eb", padding: "8px 12px", cursor: "pointer", fontWeight: 700 },
 };
