@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { fetchTopByGame } from "../lib/supabase"; // ggf. auf "../lib/supabase-best" ändern
+import { fetchTopByGame } from "../lib/supabase-best";
 
 const GAME_LABELS = {
   QUIZ: "Werkstatt-Quiz",
