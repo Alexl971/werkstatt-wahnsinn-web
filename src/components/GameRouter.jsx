@@ -1,4 +1,3 @@
-// src/components/GameRouter.jsx
 import React, { useEffect, useRef, useState } from "react";
 import TapFrenzy from "../games/TapFrenzy";
 import QuizRound from "../games/QuizRound";
@@ -6,6 +5,7 @@ import SwipeApproval from "../games/SwipeApproval";
 import SortSequence from "../games/SortSequence";
 import BrakeTest from "../games/BrakeTest";
 import CodeTyper from "../games/CodeTyper";
+import { addBestGameScore } from "../lib/supabase-best"; // <— Online-Highscore
 
 /**
  * props:
@@ -14,11 +14,11 @@ import CodeTyper from "../games/CodeTyper";
  * - onRoundEnd(earned: number): void
  * - playerName?: string
  */
-export default function GameRouter({ game, roundSeconds, onRoundEnd }) {
+export default function GameRouter({ game, roundSeconds, onRoundEnd, playerName }) {
   const [earned, setEarned] = useState(0);
   const [timeLeft, setTimeLeft] = useState(roundSeconds);
 
-  // ---- Bestätigtes Beenden (Double-Tap) ----
+  // ---- Beenden mit Doppeltipp ----
   const [confirmingEnd, setConfirmingEnd] = useState(false);
   const confirmTimer = useRef(null);
 
@@ -28,14 +28,25 @@ export default function GameRouter({ game, roundSeconds, onRoundEnd }) {
     confirmTimer.current = setTimeout(() => setConfirmingEnd(false), 2000);
   };
 
-  const handleEndPress = () => {
+  const saveOnline = async () => {
+    if (!playerName || !game) return;
+    try {
+      const res = await addBestGameScore({ name: playerName, game, points: earned });
+      console.log("[addBestGameScore]", res);
+    } catch (e) {
+      console.error("[addBestGameScore] failed:", e);
+    }
+  };
+
+  const handleEndPress = async () => {
     if (!confirmingEnd) {
-      armConfirm(); // erster Tipp -> „Nochmal tippen…“
+      armConfirm(); // erster Tipp
       return;
     }
     clearTimeout(confirmTimer.current);
     setConfirmingEnd(false);
-    onRoundEnd(earned); // zweiter Tipp innerhalb 2s -> Runde beenden
+    await saveOnline();          // <— erst speichern
+    onRoundEnd(earned);          // dann Screen wechseln
   };
 
   // Reset bei Spielwechsel / Rundenstart
@@ -57,9 +68,15 @@ export default function GameRouter({ game, roundSeconds, onRoundEnd }) {
     return () => clearInterval(timerRef.current);
   }, [game, roundSeconds]);
 
+  // Bei 0s: speichern -> beenden
   useEffect(() => {
-    if (timeLeft === 0) onRoundEnd(earned);
-  }, [timeLeft, earned, onRoundEnd]);
+    if (timeLeft !== 0) return;
+    (async () => {
+      await saveOnline();        // <— speichern, wenn Zeit abläuft
+      onRoundEnd(earned);
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [timeLeft]);
 
   const add = (n) => setEarned((e) => e + n);
 
@@ -70,17 +87,13 @@ export default function GameRouter({ game, roundSeconds, onRoundEnd }) {
         <span style={styles.badge}>Punkte: {earned}</span>
 
         <button
-          style={{
-            ...styles.endBtn,
-            ...(confirmingEnd ? styles.endBtnConfirm : {}),
-          }}
+          style={{ ...styles.endBtn, ...(confirmingEnd ? styles.endBtnConfirm : {}) }}
           onClick={handleEndPress}
         >
           {confirmingEnd ? "Nochmal tippen zum Bestätigen" : "Runde beenden"}
         </button>
       </div>
 
-      {/* kleiner Hinweis bei „scharfem“ End-Button */}
       {confirmingEnd && (
         <div style={styles.confirmHint}>
           Beenden wirklich? Tippe erneut innerhalb von 2 Sekunden.
@@ -154,7 +167,7 @@ const styles = {
     alignItems: "center",
     justifyContent: "center",
     flexDirection: "column",
-    paddingTop: 36, // mehr Abstand zum Header
+    paddingTop: 36,
     minHeight: 260,
     textAlign: "center",
   },
