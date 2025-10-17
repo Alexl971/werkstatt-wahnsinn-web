@@ -5,6 +5,7 @@ import Highscores from "./components/Highscores";
 import useLocalStorage from "./hooks/useLocalStorage";
 import GameRouter from "./components/GameRouter";
 import { addScore } from "./lib/supabase";
+import HighscoreBoard from "./components/HighscoreBoard";
 
 const DEFAULT_SETTINGS = {
   enabledGames: {
@@ -109,6 +110,20 @@ export default function App() {
           onRoundEnd={onRoundEnd}
         />
       )}
+
+      {screen === "HIGHSCORES" && (
+  <div className="card" style={styles.centerCard}>
+    <h2>Highscores</h2>
+    <HighscoreBoard />
+    <button
+      className="btn"
+      style={styles.btnSecondary}
+      onClick={() => setScreen("MENU")}
+    >
+      Zurück
+    </button>
+  </div>
+)}
 
       {screen === "RESULT" && (
         <div className="card" style={styles.centerCard}>

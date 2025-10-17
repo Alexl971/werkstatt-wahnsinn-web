@@ -1,6 +1,13 @@
 import React from "react";
 
-export default function Menu({ onStart, onSettings, onHighscores, playerName, setPlayerName, highscore }) {
+export default function Menu({
+  onStart,
+  onSettings,
+  onHighscores,
+  playerName,
+  setPlayerName,
+  highscore,
+}) {
   return (
     <div style={styles.page}>
       <div style={styles.heroCard}>

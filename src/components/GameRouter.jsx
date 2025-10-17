@@ -5,23 +5,27 @@ import SwipeApproval from "../games/SwipeApproval";
 import SortSequence from "../games/SortSequence";
 import BrakeTest from "../games/BrakeTest";
 import CodeTyper from "../games/CodeTyper";
+import { addBestGameScore } from "../lib/supabase-best"; // <— sorgt dafür: pro Spieler+Spiel nur der beste Score
 
 /**
  * props:
  * - game: string ('TAP_FRENZY' | 'QUIZ' | 'SWIPE_APPROVAL' | 'SORT_SEQUENCE' | 'BRAKE_TEST' | 'CODE_TYPER')
  * - roundSeconds: number
  * - onRoundEnd(earned: number): void
+ * - playerName: string   // für Online-Highscore
  */
-export default function GameRouter({ game, roundSeconds, onRoundEnd }) {
+export default function GameRouter({ game, roundSeconds, onRoundEnd, playerName }) {
   const [earned, setEarned] = useState(0);
   const [timeLeft, setTimeLeft] = useState(roundSeconds);
   const timerRef = useRef(null);
 
+  // Reset bei Spielwechsel / Rundenlänge
   useEffect(() => {
     setEarned(0);
     setTimeLeft(roundSeconds);
   }, [game, roundSeconds]);
 
+  // Timer
   useEffect(() => {
     clearInterval(timerRef.current);
     timerRef.current = setInterval(() => {
@@ -30,18 +34,30 @@ export default function GameRouter({ game, roundSeconds, onRoundEnd }) {
     return () => clearInterval(timerRef.current);
   }, [game, roundSeconds]);
 
+  // Ende der Runde -> zuerst Online speichern (best-per-game), dann App informieren
   useEffect(() => {
-    if (timeLeft === 0) onRoundEnd(earned);
-  }, [timeLeft, earned, onRoundEnd]);
+    if (timeLeft !== 0) return;
+    (async () => {
+      try {
+        if (playerName && game) {
+          await addBestGameScore({ name: playerName, game, points: earned });
+        }
+      } finally {
+        onRoundEnd(earned);
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [timeLeft]);
 
   const add = (n) => setEarned((e) => e + n);
+  const endNow = () => setTimeLeft(0);
 
   return (
     <div style={styles.shell}>
       <div style={styles.header}>
         <span style={styles.badge}>⏱️ {timeLeft}s</span>
         <span style={styles.badge}>Punkte: {earned}</span>
-        <button style={styles.btnSecondary} onClick={() => onRoundEnd(earned)}>
+        <button style={styles.btnSecondary} onClick={endNow}>
           Runde beenden
         </button>
       </div>
@@ -71,9 +87,9 @@ const styles = {
   header: {
     display: "flex",
     alignItems: "center",
-    gap: 12,                // Abstand zwischen Timer / Punkte
+    gap: 12,
     justifyContent: "space-between",
-    flexWrap: "wrap",       // bricht um, wenn’s eng wird
+    flexWrap: "wrap",
   },
   badge: {
     display: "inline-block",
@@ -96,7 +112,7 @@ const styles = {
     alignItems: "center",
     justifyContent: "center",
     flexDirection: "column",
-    paddingTop: 40,         // mehr Abstand zur Kopfzeile
+    paddingTop: 40, // mehr Abstand zur Kopfzeile (damit man nicht versehentlich "Beenden" tappt)
     minHeight: 260,
     textAlign: "center",
   },
