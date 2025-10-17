@@ -1,9 +1,13 @@
+// src/App.jsx
 import React, { useMemo, useState } from "react";
 import Menu from "./components/Menu";
 import Settings from "./components/Settings";
 import Highscores from "./components/Highscores";
-import useLocalStorage from "./hooks/useLocalStorage";
 import GameRouter from "./components/GameRouter";
+import useLocalStorage from "./hooks/useLocalStorage";
+
+import Login from "./components/Login";
+import { getAuthUser, signOutLocal } from "./lib/auth";
 
 // Standard-Einstellungen
 const DEFAULT_SETTINGS = {
@@ -15,12 +19,14 @@ const DEFAULT_SETTINGS = {
     BRAKE_TEST: true,
     CODE_TYPER: true,
   },
-  // fest auf 20s (fix)
-  roundSeconds: 20,
+  roundSeconds: 20,      // fix
   soundEnabled: true,
 };
 
 export default function App() {
+  // Auth
+  const [authUser, setAuthUser] = useState(getAuthUser());
+
   // Screens: MENU | SETTINGS | GAME | RESULT | HIGHSCORES
   const [screen, setScreen] = useState("MENU");
 
@@ -30,11 +36,11 @@ export default function App() {
   const [settings, setSettings] = useLocalStorage("SETTINGS", DEFAULT_SETTINGS);
 
   // Runden-/Spiel-State
-  const [score, setScore] = useState(0);          // Gesamtscore (lokal) über viele Runden
-  const [roundScore, setRoundScore] = useState(0); // Score in letzter Runde
+  const [score, setScore] = useState(0);          // Gesamtscore (lokal)
+  const [roundScore, setRoundScore] = useState(0);
   const [currentGame, setCurrentGame] = useState(null);
 
-  // Liste aktivierter Spiele (Schalter in Settings)
+  // Liste aktivierter Spiele
   const enabledGames = useMemo(
     () =>
       Object.entries(settings.enabledGames)
@@ -43,7 +49,6 @@ export default function App() {
     [settings.enabledGames]
   );
 
-  // Runde starten -> zufälliges aktives Spiel wählen
   const startRound = () => {
     if (!playerName.trim()) {
       alert("Bitte gib einen Spielernamen ein.");
@@ -60,7 +65,6 @@ export default function App() {
     setScreen("GAME");
   };
 
-  // Wird von GameRouter aufgerufen, wenn die Runde endet
   const onRoundEnd = (earned) => {
     setRoundScore(earned);
     const total = score + earned;
@@ -69,18 +73,38 @@ export default function App() {
     setScreen("RESULT");
   };
 
+  const logout = () => {
+    signOutLocal();
+    setAuthUser(null);
+    setScreen("MENU");
+  };
+
+  // Wenn nicht eingeloggt -> Login anzeigen
+  if (!authUser) {
+    return <Login onSuccess={(u) => setAuthUser(u)} />;
+  }
+
   return (
     <div style={styles.app}>
-      {/* MENU: kein zusätzlicher Wrapper mehr – Menu zentriert sich selbst */}
       {screen === "MENU" && (
-        <Menu
-          onStart={startRound}
-          onSettings={() => setScreen("SETTINGS")}
-          onHighscores={() => setScreen("HIGHSCORES")}
-          playerName={playerName}
-          setPlayerName={setPlayerName}
-          highscore={highscore}
-        />
+        <div className="card" style={styles.card}>
+          {/* kleiner Header mit Login-Info + Logout */}
+          <div style={styles.topBar}>
+            <div style={{ opacity: .9 }}>
+              Eingeloggt als <b>{authUser.username}</b>
+            </div>
+            <button className="btn" style={styles.btnGhostSm} onClick={logout}>Abmelden</button>
+          </div>
+
+          <Menu
+            onStart={startRound}
+            onSettings={() => setScreen("SETTINGS")}
+            onHighscores={() => setScreen("HIGHSCORES")}
+            playerName={playerName}
+            setPlayerName={setPlayerName}
+            highscore={highscore}
+          />
+        </div>
       )}
 
       {screen === "SETTINGS" && (
@@ -88,7 +112,6 @@ export default function App() {
           settings={settings}
           setSettings={setSettings}
           onBack={() => setScreen("MENU")}
-          onQuickStart={startRound}
         />
       )}
 
@@ -101,9 +124,10 @@ export default function App() {
       {screen === "GAME" && currentGame && (
         <GameRouter
           game={currentGame}
-          roundSeconds={20}                 // fix
+          roundSeconds={settings.roundSeconds}
           onRoundEnd={onRoundEnd}
-          playerName={playerName}           // wichtig: Online-Score speichern
+          playerName={playerName}
+          user={authUser}                 // << wichtig für Online-Score (user_id)
         />
       )}
 
@@ -112,7 +136,7 @@ export default function App() {
           <h2 style={{ margin: 0 }}>Rundenende</h2>
           <div style={{ marginTop: 6 }}>Runde: {roundScore} Punkte</div>
           <div>Gesamt: {score} Punkte</div>
-          <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap", justifyContent: "center" }}>
+          <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
             <button className="btn" style={styles.btnPrimary} onClick={startRound}>
               Nächste Runde
             </button>
@@ -134,24 +158,43 @@ const styles = {
     minHeight: "100svh",
     background: "#0f172a",
     color: "#e5e7eb",
-    display: "grid",
+    display: "flex",
     alignItems: "center",
-    justifyItems: "center",
-    padding:
-      "calc(16px + env(safe-area-inset-top)) 16px calc(16px + env(safe-area-inset-bottom)) 16px",
+    justifyContent: "center",
+    padding: 16,
     fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, sans-serif",
     backgroundImage:
       "radial-gradient(1200px 600px at 50% -10%, rgba(37,99,235,.10), transparent 60%)",
   },
+  card: {
+    width: "100%",
+    maxWidth: 720,
+    background: "#111827",
+    border: "2px solid #1f2937",
+    borderRadius: 18,
+    padding: 0,
+  },
+  topBar: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: "10px 12px",
+    borderBottom: "2px solid #1f2937",
+    background: "#0b1220",
+    borderTopLeftRadius: 18,
+    borderTopRightRadius: 18,
+  },
   centerCard: {
-    width: "min(560px, calc(100vw - 32px))",
+    width: "100%",
+    maxWidth: 560,
     background: "#111827",
     border: "2px solid #1f2937",
     borderRadius: 18,
     padding: 20,
-    display: "grid",
+    display: "flex",
     gap: 10,
-    justifyItems: "center",
+    flexDirection: "column",
+    alignItems: "center",
     textAlign: "center",
   },
   btnPrimary: {
@@ -180,5 +223,15 @@ const styles = {
     padding: "12px 16px",
     cursor: "pointer",
     fontWeight: 700,
+  },
+  btnGhostSm: {
+    background: "transparent",
+    borderRadius: 10,
+    border: "2px solid #334155",
+    color: "#e5e7eb",
+    padding: "6px 10px",
+    cursor: "pointer",
+    fontWeight: 700,
+    fontSize: 13,
   },
 };
