@@ -40,7 +40,8 @@ export default function GameRouter({ game, roundSeconds, onRoundEnd, playerName 
     (async () => {
       try {
         if (playerName && game) {
-          await addBestGameScore({ name: playerName, game, points: earned });
+          const res = await addBestGameScore({ name: playerName, game, points: earned });
+          console.log("[SUPABASE addBestGameScore]", res);
         }
       } finally {
         onRoundEnd(earned);
