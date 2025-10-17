@@ -1,12 +1,11 @@
 import React, { useMemo, useState } from "react";
 import Menu from "./components/Menu";
 import Settings from "./components/Settings";
-import Highscores from "./components/Highscores";
+import Highscores from "./components/Highscores"; // nutzt intern fetchTopByGame
 import useLocalStorage from "./hooks/useLocalStorage";
-import GameRouter from "./components/GameRouter";
-import { addScore } from "./lib/supabase";
-import HighscoreBoard from "./components/HighscoreBoard";
+import GameRouter from "./components/GameRouter"; // ruft addBestGameScore() beim Rundende
 
+// Standard-Einstellungen
 const DEFAULT_SETTINGS = {
   enabledGames: {
     TAP_FRENZY: true,
@@ -21,18 +20,20 @@ const DEFAULT_SETTINGS = {
 };
 
 export default function App() {
-  // MENU | SETTINGS | GAME | RESULT | HIGHSCORES
+  // Screens: MENU | SETTINGS | GAME | RESULT | HIGHSCORES
   const [screen, setScreen] = useState("MENU");
 
+  // Persistente Werte
   const [playerName, setPlayerName] = useLocalStorage("PLAYER_NAME", "");
   const [highscore, setHighscore] = useLocalStorage("HIGH_SCORE", 0);
   const [settings, setSettings] = useLocalStorage("SETTINGS", DEFAULT_SETTINGS);
 
-  const [score, setScore] = useState(0);
-  const [roundScore, setRoundScore] = useState(0);
+  // Runden-/Spiel-State
+  const [score, setScore] = useState(0);          // Gesamtscore (lokal) über viele Runden
+  const [roundScore, setRoundScore] = useState(0); // Score in letzter Runde
   const [currentGame, setCurrentGame] = useState(null);
-  const [uploaded, setUploaded] = useState(false); // verhindert Doppel-Upload
 
+  // Liste aktivierter Spiele (Schalter in Settings)
   const enabledGames = useMemo(
     () =>
       Object.entries(settings.enabledGames)
@@ -41,6 +42,7 @@ export default function App() {
     [settings.enabledGames]
   );
 
+  // Runde starten -> zufälliges aktives Spiel wählen
   const startRound = () => {
     if (!playerName.trim()) {
       alert("Bitte gib einen Spielernamen ein.");
@@ -54,26 +56,16 @@ export default function App() {
     const next = enabledGames[Math.floor(Math.random() * enabledGames.length)];
     setCurrentGame(next);
     setRoundScore(0);
-    setUploaded(false);
     setScreen("GAME");
   };
 
-  const onRoundEnd = async (earned) => {
+  // Wird von GameRouter aufgerufen, wenn die Runde endet
+  const onRoundEnd = (earned) => {
     setRoundScore(earned);
     const total = score + earned;
     setScore(total);
     if (total > highscore) setHighscore(total);
     setScreen("RESULT");
-
-    // Score automatisch in die Online-Liste hochladen (falls möglich)
-    if (!uploaded && playerName.trim()) {
-      setUploaded(true);
-      try {
-        await addScore({ name: playerName.trim().slice(0, 24), points: total });
-      } catch {
-        // Ignorieren; Button für Highscores bleibt ja im Menü
-      }
-    }
   };
 
   return (
@@ -100,7 +92,10 @@ export default function App() {
       )}
 
       {screen === "HIGHSCORES" && (
-        <Highscores onBack={() => setScreen("MENU")} />
+        <div className="card" style={{ ...styles.centerCard, maxWidth: 920 }}>
+          {/* Highscores.jsx benutzt intern fetchTopByGame(...) */}
+          <Highscores onBack={() => setScreen("MENU")} />
+        </div>
       )}
 
       {screen === "GAME" && currentGame && (
@@ -108,22 +103,9 @@ export default function App() {
           game={currentGame}
           roundSeconds={settings.roundSeconds}
           onRoundEnd={onRoundEnd}
+          playerName={playerName} // wichtig: damit Online-Score gespeichert wird
         />
       )}
-
-      {screen === "HIGHSCORES" && (
-  <div className="card" style={styles.centerCard}>
-    <h2>Highscores</h2>
-    <HighscoreBoard />
-    <button
-      className="btn"
-      style={styles.btnSecondary}
-      onClick={() => setScreen("MENU")}
-    >
-      Zurück
-    </button>
-  </div>
-)}
 
       {screen === "RESULT" && (
         <div className="card" style={styles.centerCard}>
@@ -138,11 +120,8 @@ export default function App() {
               Menü
             </button>
             <button className="btn" style={styles.btnGhost} onClick={() => setScreen("HIGHSCORES")}>
-              🏆 Online-Highscores
+              🏆 Highscores
             </button>
-          </div>
-          <div style={{ color: "#cbd5e1", marginTop: 6, fontSize: 13 }}>
-            {uploaded ? "Score wurde (sofern konfiguriert) hochgeladen." : "Wird automatisch hochgeladen."}
           </div>
         </div>
       )}

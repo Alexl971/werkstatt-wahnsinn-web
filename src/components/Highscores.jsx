@@ -1,14 +1,29 @@
-import React, { useEffect, useState } from "react";
-import { fetchTop } from "../lib/supabase";
+import React, { useEffect, useMemo, useState } from "react";
+import { fetchTopByGame } from "../lib/supabase"; // ← ggf. auf "../lib/supabase-best" ändern
+
+const GAME_LABELS = {
+  QUIZ: "Werkstatt-Quiz",
+  TAP_FRENZY: "Ölwechsel 3000",
+  SWIPE_APPROVAL: "Garantiehölle",
+  SORT_SEQUENCE: "Rechnungs-Sortierer",
+  BRAKE_TEST: "Bremsentest",
+  CODE_TYPER: "Code-Tipper",
+};
+
+const GAMES = Object.keys(GAME_LABELS);
 
 export default function Highscores({ onBack }) {
+  const [active, setActive] = useState(GAMES[0]);
   const [rows, setRows] = useState([]);
   const [state, setState] = useState("loading"); // loading | ok | error
 
-  const load = async () => {
+  const title = GAME_LABELS[active] ?? active;
+
+  const load = async (game) => {
     setState("loading");
-    const { data, error } = await fetchTop(50);
+    const { data, error } = await fetchTopByGame(game, 50);
     if (error) {
+      setRows([]);
       setState("error");
     } else {
       setRows(data || []);
@@ -17,52 +32,79 @@ export default function Highscores({ onBack }) {
   };
 
   useEffect(() => {
-    load();
-  }, []);
+    load(active);
+  }, [active]);
 
   return (
-    <div style={styles.card}>
+    <div style={styles.wrap}>
       <div style={styles.header}>
         <h2 style={{ margin: 0 }}>🏆 Highscores</h2>
         <div style={{ display: "flex", gap: 8 }}>
-          <button style={styles.btn} onClick={load}>Aktualisieren</button>
+          <button style={styles.btn} onClick={() => load(active)}>Aktualisieren</button>
           <button style={styles.btnSecondary} onClick={onBack}>Zurück</button>
         </div>
       </div>
 
-      {state === "loading" && <div style={styles.muted}>Lade …</div>}
-      {state === "error" && (
-        <div style={styles.muted}>
-          Konnte Highscores nicht laden. Prüfe Environment-Variablen / Tabelle.
-        </div>
-      )}
+      {/* Tabs */}
+      <div style={styles.tabs}>
+        {GAMES.map((g) => {
+          const activeTab = g === active;
+          return (
+            <button
+              key={g}
+              onClick={() => setActive(g)}
+              style={{
+                ...styles.tab,
+                background: activeTab ? "#2563eb" : "#0b1220",
+                borderColor: activeTab ? "#2563eb" : "#1f2937",
+                color: activeTab ? "#fff" : "#e5e7eb",
+              }}
+            >
+              {GAME_LABELS[g]}
+            </button>
+          );
+        })}
+      </div>
 
-      {state === "ok" && (
-        <ol style={styles.list}>
-          {rows.map((r, i) => (
-            <li key={r.id || i} style={styles.row}>
-              <span style={styles.rank}>{i + 1}.</span>
-              <span style={styles.name}>{r.name}</span>
-              <span style={styles.points}>{r.points} P</span>
-            </li>
-          ))}
-          {rows.length === 0 && (
-            <div style={styles.muted}>Noch keine Einträge – hol dir den ersten Platz! 🚀</div>
-          )}
-        </ol>
-      )}
+      <div className="card" style={styles.card}>
+        <div style={styles.titleRow}>
+          <div style={{ fontWeight: 800 }}>{title}</div>
+          <div style={{ opacity: 0.8, fontSize: 13 }}>bester Score je Spieler</div>
+        </div>
+
+        {state === "loading" && (
+          <div style={styles.muted}>Lade …</div>
+        )}
+        {state === "error" && (
+          <div style={styles.muted}>
+            Konnte Highscores nicht laden. Prüfe ENV/Policies/Tabelle.
+          </div>
+        )}
+
+        {state === "ok" && (
+          rows.length > 0 ? (
+            <ol style={styles.list}>
+              {rows.map((r, i) => (
+                <li key={i} style={styles.row}>
+                  <span style={styles.rank}>{i + 1}.</span>
+                  <span style={styles.name}>{r.player_name}</span>
+                  <span style={styles.points}>{r.score}</span>
+                </li>
+              ))}
+            </ol>
+          ) : (
+            <div style={styles.muted}>Noch keine Einträge – hol dir Platz 1! 🚀</div>
+          )
+        )}
+      </div>
     </div>
   );
 }
 
 const styles = {
-  card: {
+  wrap: {
     width: "100%",
-    maxWidth: 560,
-    background: "#111827",
-    border: "2px solid #1f2937",
-    borderRadius: 18,
-    padding: 16,
+    maxWidth: 900,
     color: "#e5e7eb",
   },
   header: {
@@ -71,7 +113,40 @@ const styles = {
     alignItems: "center",
     marginBottom: 10,
   },
-  list: { listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 6 },
+  tabs: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+    gap: 8,
+    marginBottom: 12,
+  },
+  tab: {
+    padding: "10px 12px",
+    borderRadius: 12,
+    border: "2px solid #1f2937",
+    background: "#0b1220",
+    cursor: "pointer",
+    fontWeight: 700,
+    textAlign: "center",
+  },
+  card: {
+    background: "#111827",
+    border: "2px solid #1f2937",
+    borderRadius: 18,
+    padding: 14,
+  },
+  titleRow: {
+    display: "flex",
+    justifyContent: "space-between",
+    marginBottom: 8,
+  },
+  list: {
+    listStyle: "none",
+    padding: 0,
+    margin: 0,
+    display: "flex",
+    flexDirection: "column",
+    gap: 6,
+  },
   row: {
     display: "grid",
     gridTemplateColumns: "44px 1fr 80px",
@@ -84,7 +159,7 @@ const styles = {
   },
   rank: { fontWeight: 900, textAlign: "right", color: "#93c5fd" },
   name: { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
-  points: { textAlign: "right", fontWeight: 800 },
+  points: { textAlign: "right", fontWeight: 800, color: "#38bdf8" },
   muted: { color: "#cbd5e1", opacity: 0.8, textAlign: "center", padding: 12 },
   btn: {
     background: "#2563eb",
