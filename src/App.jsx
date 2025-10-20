@@ -19,7 +19,7 @@ const DEFAULT_SETTINGS = {
     BRAKE_TEST: true,
     CODE_TYPER: true,
   },
-  roundSeconds: ROUND_SECONDS, // fix
+  roundSeconds: ROUND_SECONDS,
   soundEnabled: true,
 };
 
@@ -27,16 +27,15 @@ export default function App() {
   // Auth
   const [authUser, setAuthUser] = useState(getAuthUser());
 
-  // Screens
-  // MENU | SETTINGS | GAME | RESULT | HIGHSCORES | ADMIN
+  // Screens: MENU | SETTINGS | GAME | RESULT | HIGHSCORES | ADMIN
   const [screen, setScreen] = useState("MENU");
 
-  // Lokale Anzeige des summierten Scores über mehrere Runden (nur Gerät)
+  // lokaler Gesamtscore
   const [highscore, setHighscore] = useState(() =>
     Number(localStorage.getItem("HIGH_SCORE") || 0)
   );
 
-  // Settings aus LocalStorage (mit Fallback)
+  // Settings (persistiert)
   const [settings, setSettings] = useState(() => {
     const raw = localStorage.getItem("SETTINGS");
     return raw ? JSON.parse(raw) : DEFAULT_SETTINGS;
@@ -47,7 +46,6 @@ export default function App() {
   const [roundScore, setRoundScore] = useState(0);
   const [currentGame, setCurrentGame] = useState(null);
 
-  // aktive Spiele laut Settings
   const enabledGames = useMemo(
     () =>
       Object.entries(settings.enabledGames)
@@ -56,13 +54,11 @@ export default function App() {
     [settings.enabledGames]
   );
 
-  // Settings persistieren
   const persistSettings = (next) => {
     setSettings(next);
     localStorage.setItem("SETTINGS", JSON.stringify(next));
   };
 
-  // Runde starten
   const startRound = () => {
     if (!authUser) return;
     if (!enabledGames.length) {
@@ -76,7 +72,6 @@ export default function App() {
     setScreen("GAME");
   };
 
-  // Rundenergebnis entgegennehmen
   const onRoundEnd = (earned) => {
     const total = score + earned;
     setScore(total);
@@ -88,7 +83,6 @@ export default function App() {
     setScreen("RESULT");
   };
 
-  // Logout
   const logout = () => {
     signOutLocal();
     setScreen("MENU");
@@ -98,14 +92,13 @@ export default function App() {
     setAuthUser(null);
   };
 
-  // Login-Gate
   if (!authUser) return <Login onSuccess={(u) => setAuthUser(u)} />;
 
   return (
     <div style={styles.app}>
       {screen === "MENU" && (
         <div className="card" style={styles.card}>
-          {/* Topbar mit User + Admin + Logout */}
+          {/* Topbar */}
           <div style={styles.topBar}>
             <div style={{ opacity: 0.9 }}>
               Eingeloggt als <b>{authUser.username}</b>
@@ -132,7 +125,7 @@ export default function App() {
             onSettings={() => setScreen("SETTINGS")}
             onHighscores={() => setScreen("HIGHSCORES")}
             highscore={highscore}
-            username={authUser.username} // Anzeige
+            username={authUser.username}
           />
         </div>
       )}
@@ -158,9 +151,9 @@ export default function App() {
       {screen === "GAME" && currentGame && (
         <GameRouter
           game={currentGame}
-          roundSeconds={ROUND_SECONDS} // fix 20s
+          roundSeconds={ROUND_SECONDS}
           onRoundEnd={onRoundEnd}
-          user={authUser} // wichtig: für Online-Score (user_id)
+          user={authUser} // -> für Online-Score addBestGameScore(user)
         />
       )}
 
