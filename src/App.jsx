@@ -24,24 +24,17 @@ const DEFAULT_SETTINGS = {
 };
 
 export default function App() {
-  // Auth
   const [authUser, setAuthUser] = useState(getAuthUser());
-
-  // Screens: MENU | SETTINGS | GAME | RESULT | HIGHSCORES | ADMIN
   const [screen, setScreen] = useState("MENU");
 
-  // lokaler Gesamtscore
   const [highscore, setHighscore] = useState(() =>
     Number(localStorage.getItem("HIGH_SCORE") || 0)
   );
-
-  // Settings (persistiert)
   const [settings, setSettings] = useState(() => {
     const raw = localStorage.getItem("SETTINGS");
     return raw ? JSON.parse(raw) : DEFAULT_SETTINGS;
   });
 
-  // Runden-/Spiel-State
   const [score, setScore] = useState(0);
   const [roundScore, setRoundScore] = useState(0);
   const [currentGame, setCurrentGame] = useState(null);
@@ -98,28 +91,16 @@ export default function App() {
     <div style={styles.app}>
       {screen === "MENU" && (
         <div className="card" style={styles.card}>
-          {/* Topbar */}
           <div style={styles.topBar}>
-            <div style={{ opacity: 0.9 }}>
-              Eingeloggt als <b>{authUser.username}</b>
-            </div>
+            <div>Angemeldet als <b>{authUser.username}</b></div>
             <div style={{ display: "flex", gap: 8 }}>
               {authUser.username === "Alex" && (
-                <button
-                  className="btn"
-                  style={styles.btnGhostSm}
-                  onClick={() => setScreen("ADMIN")}
-                >
-                  Admin
-                </button>
+                <button className="btn" style={styles.btnGhostSm} onClick={() => setScreen("ADMIN")}>Admin</button>
               )}
-              <button className="btn" style={styles.btnGhostSm} onClick={logout}>
-                Abmelden
-              </button>
+              <button className="btn" style={styles.btnGhostSm} onClick={logout}>Abmelden</button>
             </div>
           </div>
 
-          {/* Startseite (links-zentriert in Menu.jsx) */}
           <Menu
             onStart={startRound}
             onSettings={() => setScreen("SETTINGS")}
@@ -131,11 +112,7 @@ export default function App() {
       )}
 
       {screen === "SETTINGS" && (
-        <Settings
-          settings={settings}
-          setSettings={persistSettings}
-          onBack={() => setScreen("MENU")}
-        />
+        <Settings settings={settings} setSettings={persistSettings} onBack={() => setScreen("MENU")} />
       )}
 
       {screen === "HIGHSCORES" && (
@@ -153,7 +130,7 @@ export default function App() {
           game={currentGame}
           roundSeconds={ROUND_SECONDS}
           onRoundEnd={onRoundEnd}
-          user={authUser} // -> für Online-Score addBestGameScore(user)
+          user={authUser}
         />
       )}
 
@@ -162,32 +139,10 @@ export default function App() {
           <h2 style={{ margin: 0 }}>Rundenende</h2>
           <div style={{ marginTop: 6 }}>Runde: {roundScore} Punkte</div>
           <div>Gesamt: {score} Punkte</div>
-          <div
-            style={{
-              display: "flex",
-              gap: 8,
-              marginTop: 10,
-              flexWrap: "wrap",
-              justifyContent: "center",
-            }}
-          >
-            <button className="btn" style={styles.btnPrimary} onClick={startRound}>
-              Nächste Runde
-            </button>
-            <button
-              className="btn"
-              style={styles.btnSecondary}
-              onClick={() => setScreen("MENU")}
-            >
-              Menü
-            </button>
-            <button
-              className="btn"
-              style={styles.btnGhost}
-              onClick={() => setScreen("HIGHSCORES")}
-            >
-              🏆 Highscores
-            </button>
+          <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap", justifyContent: "center" }}>
+            <button className="btn" style={styles.btnPrimary} onClick={startRound}>Nächste Runde</button>
+            <button className="btn" style={styles.btnSecondary} onClick={() => setScreen("MENU")}>Menü</button>
+            <button className="btn" style={styles.btnGhost} onClick={() => setScreen("HIGHSCORES")}>🏆 Highscores</button>
           </div>
         </div>
       )}
@@ -238,41 +193,8 @@ const styles = {
     justifyItems: "center",
     textAlign: "center",
   },
-  btnPrimary: {
-    background: "#2563eb",
-    borderRadius: 12,
-    border: "none",
-    color: "white",
-    padding: "12px 16px",
-    cursor: "pointer",
-    fontWeight: 700,
-  },
-  btnSecondary: {
-    background: "#334155",
-    borderRadius: 12,
-    border: "none",
-    color: "#e5e7eb",
-    padding: "12px 16px",
-    cursor: "pointer",
-    fontWeight: 700,
-  },
-  btnGhost: {
-    background: "#0b1220",
-    borderRadius: 12,
-    border: "2px solid #1f2937",
-    color: "#e5e7eb",
-    padding: "12px 16px",
-    cursor: "pointer",
-    fontWeight: 700,
-  },
-  btnGhostSm: {
-    background: "transparent",
-    borderRadius: 10,
-    border: "2px solid #334155",
-    color: "#e5e7eb",
-    padding: "6px 10px",
-    cursor: "pointer",
-    fontWeight: 700,
-    fontSize: 13,
-  },
+  btnPrimary: { background: "#2563eb", borderRadius: 12, border: "none", color: "white", padding: "12px 16px", cursor: "pointer", fontWeight: 700 },
+  btnSecondary: { background: "#334155", borderRadius: 12, border: "none", color: "#e5e7eb", padding: "12px 16px", cursor: "pointer", fontWeight: 700 },
+  btnGhost: { background: "#0b1220", borderRadius: 12, border: "2px solid #1f2937", color: "#e5e7eb", padding: "12px 16px", cursor: "pointer", fontWeight: 700 },
+  btnGhostSm: { background: "transparent", borderRadius: 10, border: "2px solid #334155", color: "#e5e7eb", padding: "6px 10px", cursor: "pointer", fontWeight: 700, fontSize: 13 },
 };

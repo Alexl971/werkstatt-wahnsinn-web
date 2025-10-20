@@ -1,3 +1,4 @@
+// src/components/GameRouter.jsx
 import React, { useEffect, useRef, useState } from "react";
 import TapFrenzy from "../games/TapFrenzy";
 import QuizRound from "../games/QuizRound";
@@ -5,31 +6,24 @@ import SwipeApproval from "../games/SwipeApproval";
 import SortSequence from "../games/SortSequence";
 import BrakeTest from "../games/BrakeTest";
 import CodeTyper from "../games/CodeTyper";
-import { addBestGameScore } from "../lib/supabase-best";
+import { addBestGameScore } from "../lib/supabase";
 
-/**
- * props:
- * - game: string
- * - roundSeconds: number (wir übergeben fix 20)
- * - onRoundEnd(earned: number): void
+/** props:
+ * - game: 'TAP_FRENZY' | 'QUIZ' | ...
+ * - roundSeconds: number (hier: 20s)
+ * - onRoundEnd(earned:number)
  * - user: { id, username }
  */
 export default function GameRouter({ game, roundSeconds, onRoundEnd, user }) {
   const [earned, setEarned] = useState(0);
-  const [timeLeft, setTimeLeft] = useState(roundSeconds || 20);
-  const [confirmingEnd, setConfirmingEnd] = useState(false);
-
-  const timerRef = useRef(null);
-  const confirmTimerRef = useRef(null);
+  const [timeLeft, setTimeLeft] = useState(roundSeconds);
+  const timerRef = useRef();
 
   useEffect(() => {
     setEarned(0);
-    setTimeLeft(roundSeconds || 20);
-    setConfirmingEnd(false);
-    clearTimeout(confirmTimerRef.current);
+    setTimeLeft(roundSeconds);
   }, [game, roundSeconds]);
 
-  // stabiler Countdown
   useEffect(() => {
     clearInterval(timerRef.current);
     timerRef.current = setInterval(() => {
@@ -39,28 +33,23 @@ export default function GameRouter({ game, roundSeconds, onRoundEnd, user }) {
   }, [game, roundSeconds]);
 
   useEffect(() => {
-    if (timeLeft === 0) endRound();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    if (timeLeft === 0) finish();
+    // eslint-disable-next-line
   }, [timeLeft]);
 
   const add = (n) => setEarned((e) => e + n);
 
-  const endRound = async () => {
+  const finish = async () => {
+    // Online Highscore best-per-player speichern
     try {
-      // Spielername = Username
-      const playerName = user?.username || "Anonymous";
-      await addBestGameScore(playerName, game, earned, user);
-    } catch {
-      /* still – kein Blocker fürs UI */
-    }
+      await addBestGameScore({
+        player_name: user?.username || "Anonymous",
+        user_id: user?.id || null,
+        game_name: game,
+        score: earned,
+      });
+    } catch {}
     onRoundEnd(earned);
-  };
-
-  const requestEnd = () => {
-    if (confirmingEnd) return endRound();
-    setConfirmingEnd(true);
-    clearTimeout(confirmTimerRef.current);
-    confirmTimerRef.current = setTimeout(() => setConfirmingEnd(false), 2000);
   };
 
   return (
@@ -68,17 +57,8 @@ export default function GameRouter({ game, roundSeconds, onRoundEnd, user }) {
       <div style={styles.header}>
         <span style={styles.badge}>⏱️ {timeLeft}s</span>
         <span style={styles.badge}>Punkte: {earned}</span>
-        <button style={styles.btnSecondary} onClick={requestEnd}>
-          Runde beenden
-        </button>
+        <button style={styles.btnSecondary} onClick={finish}>Runde beenden</button>
       </div>
-
-      {confirmingEnd && (
-        <div style={styles.confirmRow}>
-          <span>Beenden wirklich? Tippe erneut innerhalb von 2 Sekunden.</span>
-          <button onClick={endRound} style={styles.confirmBtn}>Jetzt beenden</button>
-        </div>
-      )}
 
       <div style={styles.cardBody}>
         {game === "TAP_FRENZY" && <TapFrenzy onScore={add} />}
@@ -88,26 +68,34 @@ export default function GameRouter({ game, roundSeconds, onRoundEnd, user }) {
         {game === "BRAKE_TEST" && <BrakeTest onScore={add} />}
         {game === "CODE_TYPER" && <CodeTyper onScore={add} />}
       </div>
+
+      {/* fixer Footer, damit man nicht aus Versehen Menüs trifft */}
+      <div style={styles.footer}>
+        <button style={styles.btnSecondary} onClick={finish}>Runde beenden</button>
+      </div>
     </div>
   );
 }
 
 const styles = {
   shell: {
-    width: "min(720px, calc(100vw - 32px))",
+    width: "100%",
+    maxWidth: 720,
     background: "#111827",
     border: "2px solid #1f2937",
     borderRadius: 18,
     padding: 16,
     margin: "0 auto",
     display: "grid",
-    gap: 10,
+    gridTemplateRows: "auto 1fr auto",
+    gap: 12,
   },
   header: {
-    display: "grid",
-    gridTemplateColumns: "1fr 1fr auto",
+    display: "flex",
     alignItems: "center",
     gap: 12,
+    justifyContent: "space-between",
+    flexWrap: "wrap",
   },
   badge: {
     display: "inline-block",
@@ -115,7 +103,6 @@ const styles = {
     borderRadius: 12,
     background: "#0b1220",
     border: "2px solid #1f2937",
-    justifySelf: "start",
   },
   btnSecondary: {
     background: "#334155",
@@ -125,36 +112,18 @@ const styles = {
     padding: "10px 14px",
     cursor: "pointer",
     fontWeight: 700,
-    justifySelf: "end",
-  },
-  confirmRow: {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 10,
-    padding: "10px 12px",
-    borderRadius: 12,
-    background: "#3f1d1d",
-    border: "2px solid #7f1d1d",
-    color: "#fecaca",
-  },
-  confirmBtn: {
-    background: "#ef4444",
-    color: "#fff",
-    border: "none",
-    borderRadius: 10,
-    padding: "8px 10px",
-    fontWeight: 800,
-    cursor: "pointer",
   },
   cardBody: {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    flexDirection: "column",
-    paddingTop: 24,
-    paddingBottom: 8,
+    display: "grid",
+    placeItems: "center",
+    paddingTop: 12,
     minHeight: 280,
     textAlign: "center",
+  },
+  footer: {
+    display: "flex",
+    justifyContent: "center",
+    paddingTop: 6,
+    borderTop: "2px solid #1f2937",
   },
 };
